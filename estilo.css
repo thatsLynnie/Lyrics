@@ -36,7 +36,7 @@ a {
 .carrusel-centrado .carousel-inner {
   border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 5px 15px rgba(150, 49, 69, 0.694);
 }
 
 .carrusel-centrado .carousel-item img {
