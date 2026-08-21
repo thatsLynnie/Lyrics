@@ -6,4 +6,41 @@
     margin-right: auto;
     margin: 0 auto;
 }
- 
+p {
+  font-family: "Alan Sans", sans-serif;
+  font-optical-sizing: auto;
+}
+a {
+    font-family: "Alan Sans", sans-serif;
+    font-optical-sizing: auto;
+}
+.mi-navbar {
+  background-color: rgb(131, 42, 65) !important;
+}
+
+.mi-navbar .nav-link, 
+.mi-navbar .navbar-brand {
+  color: rgb(254, 252, 239) !important;
+}
+.navbar-brand-img {
+    width: 170px;
+    height: 40px;
+}
+
+.carrusel-centrado {
+  max-width: 650px;
+  width: 100%;
+  margin: 50px auto;
+}
+
+.carrusel-centrado .carousel-inner {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.carrusel-centrado .carousel-item img {
+  width: 100%;
+  height: 400px;
+  object-fit: cover;
+}
