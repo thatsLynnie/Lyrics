@@ -10,6 +10,10 @@ p {
   font-family: "Alan Sans", sans-serif;
   font-optical-sizing: auto;
 }
+#pcopyright {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+}
 a {
     font-family: "Alan Sans", sans-serif;
     font-optical-sizing: auto;
