@@ -16,7 +16,10 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Alan+Sans:wght@300..900&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="estilosp.css">
+
+    <link rel="icon" href="img/logo3.png" type="image/png">
+    
+    <link rel="stylesheet" href="estilos.css">
 
 </head>
 
@@ -212,7 +215,8 @@
 
                             <a
                                 href="#inicio-sesion"
-                                class="btn-login">
+                                class="btn-login auth-trigger"
+                                data-auth-mode="login">
  
                                 Iniciar sesión
 
@@ -227,7 +231,8 @@
 
                             <a
                                 href="#registro"
-                                class="btn-register">
+                                class="btn-register auth-trigger"
+                                data-auth-mode="register">
 
                                 Registrarse
 
@@ -390,7 +395,8 @@
 
                             <a
                                 href="#registro"
-                                class="secondary-button">
+                                class="secondary-button auth-trigger"
+                                data-auth-mode="register">
 
                                 Comenzar ahora
 
@@ -1777,7 +1783,8 @@
 
                     <a
                         href="#inicio-sesion"
-                        class="main-button">
+                        class="main-button auth-trigger"
+                        data-auth-mode="register">
 
                         Comenzar ahora
 
@@ -2020,6 +2027,111 @@
         src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js">
     </script>
 
+
+    <!-- MODAL FUNCIONAL DE ACCESO A LYRICS -->
+    <div class="auth-overlay" id="loginModal" aria-hidden="true">
+        <div class="auth-container auth-compact">
+            <button class="close-auth" type="button" aria-label="Close" onclick="closeLogin()">×</button>
+
+            <div class="auth-logo">
+                <img src="img/Logo2.png" alt="Lyrics Logo">
+            </div>
+
+            <h2>Welcome back</h2>
+            <p class="auth-subtitle">Sign in to continue creating, organizing and analyzing music.</p>
+
+            <form class="auth-form" onsubmit="event.preventDefault();">
+                <div class="input-group">
+                    <label for="loginEmail">Email</label>
+                    <input id="loginEmail" type="email" placeholder="Enter your email" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="loginPassword">Password</label>
+                    <input id="loginPassword" type="password" placeholder="Enter your password" required>
+                </div>
+
+                <div class="auth-options">
+                    <label><input type="checkbox"> Remember me</label>
+                    <a href="#">Forgot password?</a>
+                </div>
+
+                <button type="submit" class="auth-main-btn">Sign In</button>
+
+                <div class="divider"><span>OR</span></div>
+
+                <!-- OPCIÓN DE INICIO DE SESIÓN CON GOOGLE -->
+                <button type="button" class="google-btn" data-google-auth>
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                    <span>Continue with Google</span>
+                </button>
+            </form>
+
+            <p class="switch-auth">
+                Don't have an account?
+                <a href="#" onclick="event.preventDefault(); openRegister();">Sign up</a>
+            </p>
+        </div>
+    </div>
+
+    <div class="auth-overlay" id="registerModal" aria-hidden="true">
+        <div class="auth-container register-container auth-compact">
+            <button class="close-auth" type="button" aria-label="Close" onclick="closeRegister()">×</button>
+
+            <div class="auth-logo">
+                <img src="img/Logo2.png" alt="Lyrics Logo">
+            </div>
+
+            <h2>Create your account</h2>
+            <p class="auth-subtitle">Join Lyrics and transform your musical ideas.</p>
+
+            <form class="auth-form" onsubmit="event.preventDefault();">
+                <div class="input-row">
+                    <div class="input-group">
+                        <label for="registerName">Name</label>
+                        <input id="registerName" type="text" placeholder="Your name" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="registerLastName">Last name</label>
+                        <input id="registerLastName" type="text" placeholder="Your last name" required>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="registerEmail">Email</label>
+                    <input id="registerEmail" type="email" placeholder="Enter your email" required>
+                </div>
+
+                <div class="input-row">
+                    <div class="input-group">
+                        <label for="registerPassword">Password</label>
+                        <input id="registerPassword" type="password" placeholder="Create a password" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="registerConfirm">Confirm password</label>
+                        <input id="registerConfirm" type="password" placeholder="Confirm password" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="auth-main-btn">Create Account</button>
+
+                <div class="divider"><span>OR</span></div>
+
+                <!-- OPCIÓN DE REGISTRO CON GOOGLE -->
+                <button type="button" class="google-btn" data-google-auth>
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                    <span>Continue with Google</span>
+                </button>
+            </form>
+
+            <p class="switch-auth">
+                Already have an account?
+                <a href="#" onclick="event.preventDefault(); openLogin();">Sign In</a>
+            </p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 
 </body>
 
