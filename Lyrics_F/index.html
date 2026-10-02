@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" translate="yes">
 <head>
 
     <meta charset="UTF-8">
@@ -35,7 +35,7 @@
                     <img
                         class="navbar-brand-img"
                         src="img/logo nav1.jpg"
-                        alt="Logo Lyrics">
+                        alt="Logotipo de Lyrics">
                 </a>
 
                 <button
@@ -214,9 +214,8 @@
                         <li class="nav-item auth-nav-item">
 
                             <a
-                                href="#inicio-sesion"
-                                class="btn-login auth-trigger"
-                                data-auth-mode="login">
+                                href="#loginModal"
+                                class="btn-login">
  
                                 Iniciar sesión
 
@@ -230,9 +229,8 @@
                         <li class="nav-item">
 
                             <a
-                                href="#registro"
-                                class="btn-register auth-trigger"
-                                data-auth-mode="register">
+                                href="#registerModal"
+                                class="btn-register">
 
                                 Registrarse
 
@@ -394,9 +392,8 @@
 
 
                             <a
-                                href="#registro"
-                                class="secondary-button auth-trigger"
-                                data-auth-mode="register">
+                                href="#registerModal"
+                                class="secondary-button">
 
                                 Comenzar ahora
 
@@ -472,17 +469,6 @@
 
                                 </div>
 
-
-                                <!--
-                                <div class="carousel-item">
-
-                                    <img
-                                        src="img/TU-IMAGEN.png"
-                                        class="carousel-image"
-                                        alt="Descripción de la imagen">
-
-                                </div>
-                                -->
 
                             </div>
 
@@ -1782,9 +1768,8 @@
 
 
                     <a
-                        href="#inicio-sesion"
-                        class="main-button auth-trigger"
-                        data-auth-mode="register">
+                        href="#registerModal"
+                        class="main-button">
 
                         Comenzar ahora
 
@@ -1926,48 +1911,10 @@
                     <ul>
 
 
-                        <li>
-
-                            <a href="#">
-
-                                Centro de ayuda
-
-                            </a>
-
-                        </li>
-
-
-                        <li>
-
-                            <a href="#">
-
-                                Políticas
-
-                            </a>
-
-                        </li>
-
-
-                        <li>
-
-                            <a href="#">
-
-                                Privacidad
-
-                            </a>
-
-                        </li>
-
-
-                        <li>
-
-                            <a href="#">
-
-                                Reportar problema
-
-                            </a>
-
-                        </li>
+                        <li>Centro de ayuda</li>
+                        <li>Políticas</li>
+                        <li>Privacidad</li>
+                        <li>Reportar problema</li>
 
 
                     </ul>
@@ -2032,62 +1979,41 @@
     <div class="auth-overlay" id="loginModal">
     <div class="auth-container">
 
-        <button class="close-auth" onclick="closeLogin()">×</button>
+        <a class="close-auth" href="#inicio-sesion" aria-label="Cerrar">×</a>
 
         <div class="auth-logo">
-            <img src="img/Logo2.png" alt="Lyrics Logo">
+            <img src="img/Logo2.png" alt="Logotipo de Lyrics">
         </div>
 
-        <h2>Welcome back</h2>
+        <h2>Qué bueno verte de nuevo</h2>
 
         <p class="auth-subtitle">
-            Sign in to continue creating, organizing and analyzing music.
+            Inicia sesión para seguir creando, organizando y analizando música.
         </p>
 
         <form>
 
             <div class="input-group">
-                <label>Email</label>
-                <input type="email" placeholder="Enter your email" required>
+                <label>Correo electrónico</label>
+                <input type="email" placeholder="Escribe tu correo electrónico" required>
             </div>
 
             <div class="input-group">
-                <label>Password</label>
-                <input type="password" placeholder="Enter your password" required>
-            </div>
-
-            <div class="auth-options">
-                <label>
-                    <input type="checkbox">
-                    Remember me
-                </label>
-
-                <a href="#">Forgot password?</a>
+                <label>Contraseña</label>
+                <input type="password" placeholder="Escribe tu contraseña" required>
             </div>
 
             <button type="submit" class="auth-main-btn">
-                Sign In
-            </button>
-
-            <div class="divider">
-                <span>OR</span>
-            </div>
-
-            <!-- INICIO DE SESIÓN CON GOOGLE -->
-            <button type="button" class="google-btn">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                     alt="Google">
-
-                Continue with Google
+                Iniciar sesión
             </button>
 
         </form>
 
         <p class="switch-auth">
-            Don't have an account?
+            ¿Aún no tienes una cuenta?
 
-            <a href="#" onclick="openRegister()">
-                Sign up
+            <a href="#registerModal">
+                Crear cuenta
             </a>
         </p>
 
@@ -2096,18 +2022,18 @@
 
 <div class="auth-overlay" id="registerModal">
 
-    <div class="auth-container register-container">
+    <div class="auth-container">
 
-        <button class="close-auth" onclick="closeRegister()">×</button>
+        <a class="close-auth" href="#inicio-sesion" aria-label="Cerrar">×</a>
 
         <div class="auth-logo">
-            <img src="img/Logo2.png" alt="Lyrics Logo">
+            <img src="img/Logo2.png" alt="Logotipo de Lyrics">
         </div>
 
-        <h2>Create your account</h2>
+        <h2>Crea tu cuenta</h2>
 
         <p class="auth-subtitle">
-            Join Lyrics and transform your musical ideas.
+            Únete a Lyrics y transforma tus ideas musicales.
         </p>
 
         <form>
@@ -2115,17 +2041,17 @@
             <div class="input-row">
 
                 <div class="input-group">
-                    <label>Name</label>
+                      <label>Nombre</label>
                     <input type="text"
-                           placeholder="Your name"
-                           required>
+                          placeholder="Escribe tu nombre"
+                          required>
                 </div>
 
                 <div class="input-group">
-                    <label>Last name</label>
+                      <label>Apellidos</label>
                     <input type="text"
-                           placeholder="Your last name"
-                           required>
+                          placeholder="Escribe tus apellidos"
+                          required>
                 </div>
 
             </div>
@@ -2133,10 +2059,10 @@
 
             <div class="input-group">
 
-                <label>Email</label>
+                                <label>Correo electrónico</label>
 
                 <input type="email"
-                       placeholder="Enter your email"
+                                             placeholder="Escribe tu correo electrónico"
                        required>
 
             </div>
@@ -2144,10 +2070,10 @@
 
             <div class="input-group">
 
-                <label>Password</label>
+                                <label>Contraseña</label>
 
                 <input type="password"
-                       placeholder="Create a password"
+                                             placeholder="Crea una contraseña"
                        required>
 
             </div>
@@ -2155,39 +2081,16 @@
 
             <div class="input-group">
 
-                <label>Confirm password</label>
+                                <label>Confirmar contraseña</label>
 
                 <input type="password"
-                       placeholder="Confirm your password"
+                                             placeholder="Repite la contraseña"
                        required>
 
             </div>
 
 
-            <button type="submit" class="auth-main-btn">
-
-                Create Account
-
-            </button>
-
-
-            <div class="divider">
-
-                <span>OR</span>
-
-            </div>
-
-
-            <!-- REGISTRO CON GOOGLE -->
-
-            <button type="button" class="google-btn">
-
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                     alt="Google">
-
-                Continue with Google
-
-            </button>
+            <button type="submit" class="auth-main-btn">Crear cuenta</button>
 
 
         </form>
@@ -2195,11 +2098,11 @@
 
         <p class="switch-auth">
 
-            Already have an account?
+            ¿Ya tienes una cuenta?
 
-            <a href="#" onclick="openLogin()">
+            <a href="#loginModal">
 
-                Sign In
+                Iniciar sesión
 
             </a>
 
@@ -2209,8 +2112,5 @@
 
 </div>
 
-    <script src="script.js"></script>
-
 </body>
-
 </html>

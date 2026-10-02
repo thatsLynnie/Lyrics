@@ -4,19 +4,13 @@
 
     --vino-oscuro: rgb(104, 31, 50);
 
-    --vino-claro: rgb(164, 66, 91);
-
     --crema: rgb(254, 252, 239);
 
     --rosa-claro: #f8e9eb;
 
-    --rosa: #efd1d7;
-
     --blanco: #ffffff;
 
     --gris: #666666;
-
-    --gris-claro: #eeeeee;
 
     --negro: #252525;
 
@@ -65,20 +59,12 @@ body {
 
 p {
 
-    font-family: "Alan Sans", sans-serif;
-
-    font-optical-sizing: auto;
-
     line-height: 1.7;
 
 }
 
 
 a {
-
-    font-family: "Alan Sans", sans-serif;
-
-    font-optical-sizing: auto;
 
     text-decoration: none;
 
@@ -88,8 +74,6 @@ a {
 h1,
 h2,
 h3 {
-
-    font-family: "Alan Sans", sans-serif;
 
     font-weight: 700;
 
@@ -181,12 +165,6 @@ h3 {
     width: 130px;
 
     height: 40px;
-
-    gap: 1px;
-
-    display: flex;
-
-    align-items: center;
 
     object-fit: contain;
 
@@ -299,8 +277,6 @@ h3 {
 
     border-radius: 25px;
 
-    font-family: "Alan Sans", sans-serif;
-
     font-weight: 600;
 
     white-space: nowrap;
@@ -308,8 +284,7 @@ h3 {
     transition:
         background-color 0.3s ease,
         color 0.3s ease,
-        transform 0.2s ease,
-        box-shadow 0.2s ease;
+        transform 0.2s ease;
 
 }
 
@@ -499,18 +474,6 @@ h3 {
 
 }
 
-/* =========================================================
-   LOGO ENCIMA DE LA IMAGEN
-========================================================= */
-
-.logo-background .logom {
-
-    position: relative;
-
-    z-index: 1;
-
-}
-
 
 /* =========================================================
    LOGO PRINCIPAL
@@ -523,10 +486,6 @@ h3 {
     height: 300px;
 
     display: block;
-
-    margin-left: auto;
-
-    margin-right: auto;
 
     margin: 0 auto;
 
@@ -1669,6 +1628,12 @@ img {
 
 }
 
+.auth-overlay:target {
+
+    display: flex;
+
+}
+
 
 /* CONTENEDOR PRINCIPAL */
 
@@ -1756,8 +1721,6 @@ img {
 
     font-size: 26px;
 
-    font-family: "Alan Sans", sans-serif;
-
 }
 
 
@@ -1832,32 +1795,6 @@ img {
 }
 
 
-/* OPCIONES */
-
-.auth-options {
-
-    display: flex;
-
-    justify-content: space-between;
-
-    align-items: center;
-
-    margin-bottom: 17px;
-
-    font-size: 12px;
-
-}
-
-
-.auth-options a {
-
-    color: rgb(131, 42, 65);
-
-    text-decoration: none;
-
-}
-
-
 /* BOTÓN PRINCIPAL */
 
 .auth-main-btn {
@@ -1892,94 +1829,6 @@ img {
     transform: translateY(-2px);
 
     background-color: rgb(105, 30, 50);
-
-}
-
-
-/* DIVISOR */
-
-.divider {
-
-    display: flex;
-
-    align-items: center;
-
-    text-align: center;
-
-    margin: 16px 0;
-
-    color: #888;
-
-    font-size: 11px;
-
-}
-
-
-.divider::before,
-
-.divider::after {
-
-    content: "";
-
-    flex: 1;
-
-    border-bottom: 1px solid #ddd;
-
-}
-
-
-.divider span {
-
-    padding: 0 10px;
-
-}
-
-
-/* BOTÓN GOOGLE */
-
-.google-btn {
-
-    width: 100%;
-
-    display: flex;
-
-    justify-content: center;
-
-    align-items: center;
-
-    gap: 10px;
-
-    padding: 10px;
-
-    background-color: white;
-
-    border: 1px solid #d8d8d8;
-
-    border-radius: 10px;
-
-    font-family: "Alan Sans", sans-serif;
-
-    font-size: 14px;
-
-    cursor: pointer;
-
-    transition: 0.25s;
-
-}
-
-
-.google-btn:hover {
-
-    background-color: #f5f5f5;
-
-}
-
-
-.google-btn img {
-
-    width: 20px;
-
-    height: 20px;
 
 }
 
@@ -2029,6 +1878,10 @@ img {
     font-size: 28px;
 
     cursor: pointer;
+
+    line-height: 1;
+
+    text-decoration: none;
 
 }
 
