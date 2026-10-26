@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lyrics · Plataforma musical</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alan+Sans:wght@300..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dashboard.css">
+<script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.3/build/cjs/vexflow.min.js"></script>
+</head>
+<body>
+<div id="app" class="lyrics-app">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">𝄞</div>
+      <div class="brand-word">LYRICS<span>CREA · ORGANIZA · ANALIZA · EXPRESA</span></div>
+    </div>
+    <nav class="main-nav" aria-label="Navegación principal">
+      <button class="nav-item active" data-view="dashboard"><span>⌂</span>Dashboard</button>
+      <button class="nav-item" data-view="projects"><span>▱</span>Mis Proyectos</button>
+      <button class="nav-item" data-view="editor"><span>♬</span>Editor de Partituras</button>
+      <button class="nav-item" data-view="recording"><span>♩</span>Grabación</button>
+      <button class="nav-item" data-view="education"><span>▣</span>Módulo Educativo</button>
+      <button class="nav-item" data-view="library"><span>▤</span>Biblioteca</button>
+      <button class="nav-item" data-view="profile"><span>◉</span>Configuración</button>
+      <button class="nav-item" data-view="help"><span>?</span>Ayuda</button>
+    </nav>
+    <div class="sidebar-user" id="sidebarUser">
+      <div class="avatar" id="sideAvatar">U</div>
+      <div class="side-user-copy"><strong id="sideUserName">Usuario</strong><span id="sideUserRole">Compositor</span><b>Plan Profesional</b></div>
+      <button class="icon-button small" id="logoutBtn" title="Cerrar sesión">↪</button>
+    </div>
+  </aside>
+
+  <button class="mobile-menu" id="mobileMenu">☰</button>
+  <main class="main-area">
+    <!-- DASHBOARD -->
+    <section class="screen active" id="screen-dashboard">
+      <header class="page-header">
+        <div><h1>¡Hola, <span id="helloName">María</span>! 👋</h1><p>Continúa creando música increíble.</p></div>
+        <div class="header-actions"><button class="primary" id="newProjectBtn">＋ Nuevo proyecto</button><button class="icon-button" title="Buscar">⌕</button><button class="icon-button" title="Notificaciones">♧</button><button class="icon-button" id="openQuickSettings" title="Ajustes">☷</button></div>
+      </header>
+      <div class="dashboard-grid">
+        <div class="dashboard-main">
+          <div class="section-title"><h2>Proyectos recientes</h2><button class="text-button" data-view-target="projects">Ver todos →</button></div>
+          <div class="recent-projects" id="recentProjects"></div>
+          <div class="dashboard-lower">
+            <div class="activity-card panel-card"><div class="section-title"><h2>Actividad reciente</h2><button class="text-button">Ver toda la actividad</button></div><div id="activityRecent"></div></div>
+            <div class="usage-card panel-card"><div class="section-title"><h2>Resumen de uso</h2></div><div class="usage-grid" id="usageGrid"></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section class="screen" id="screen-projects">
+      <header class="page-header compact"><div><span class="eyebrow">ORGANIZACIÓN</span><h1>Mis Proyectos</h1><p>Crea, organiza y comparte tus procesos musicales.</p></div><button class="primary" id="projectsNewBtn">＋ Nuevo proyecto</button></header>
+      <div class="toolbar-row"><div class="search-box">⌕<input id="projectSearch" placeholder="Buscar proyectos..."></div><select id="projectStatusFilter"><option value="all">Todos los estados</option><option value="activo">Activos</option><option value="archivado">Archivados</option></select></div>
+      <div class="project-grid-large" id="projectGrid"></div>
+    </section>
+
+    <!-- EDITOR -->
+    <section class="screen editor-screen" id="screen-editor">
+      <div class="editor-shell">
+        <header class="editor-header">
+          <button class="editor-brand" data-view-target="dashboard"><span class="editor-clef">𝄞</span><span><b>LYRICS</b><small>CREA · ORGANIZA · ANALIZA · EXPRESA</small></span></button>
+          <div class="editor-file"><div><strong id="editorProjectName">Sin título</strong><button id="renameProjectBtn">✎</button><select id="scoreComposition" aria-label="Composición activa"><option value="">Sin composiciones</option></select><button id="addCompositionBtn" title="Nueva composición">＋</button></div><small>Guardado por última vez: <span id="saveStatus">Sin cambios</span></small></div>
+          <div class="editor-head-actions"><button class="icon-button" id="editorHelpBtn" title="Atajos de teclado">?</button><button class="icon-button" id="editorSettingsBtn" title="Ajustes">⚙</button><button class="icon-button" id="editorMoreBtn" title="Propiedades de la partitura">⋮</button><div class="record-status"><i></i><span>EDITOR</span><b id="editorTimer">Partitura</b></div></div>
+        </header>
+        <div class="wave-strip"><div class="waveform" id="waveform"></div><div class="wave-times"><span>0:00</span><span>0:30</span><span>1:00</span><span>1:30</span></div></div>
+        <div hidden aria-hidden="true"><select id="scoreProject"></select></div>
+        <div class="editor-body">
+          <aside class="note-palette">
+            <div class="palette-group"><h4>NOTAS</h4><button data-note="w">○ <span>Redonda</span></button><button data-note="h">♩ <span>Blanca</span></button><button class="selected" data-note="q">♩ <span>Negra</span></button><button data-note="8">♪ <span>Corchea</span></button><button data-note="16">♫ <span>Semicorchea</span></button></div>
+            <div class="palette-group"><h4>ALTERACIONES</h4><button data-score-action="sharp" title="Sostenido (#)">♯ <span>Sostenido</span></button><button data-score-action="flat" title="Bemol (b)">♭ <span>Bemol</span></button><button data-score-action="natural" title="Becuadro (n)">♮ <span>Becuadro</span></button></div>
+            <div class="palette-group"><h4>SÍMBOLOS</h4><button id="tieTool" data-score-action="tie" title="Ligadura: selecciona dos notas con Ctrl/Cmd + clic">⌒ <span>Ligadura</span></button><button data-score-action="dot" title="Puntillo">• <span>Puntillo</span></button><button data-score-action="fermata" title="Calderón">∞ <span>Calderón</span></button><button data-score-action="repeat" title="Repetición">↻ <span>Repetición</span></button><button data-score-action="rest" title="Insertar silencio">𝄽 <span>Silencio</span></button></div>
+            <div class="palette-group"><h4>DINÁMICAS</h4><button data-score-action="dynamic-mf"><em>mf</em><span>Medio fuerte</span></button><button data-score-action="dynamic-f"><em>f</em><span>Fuerte</span></button><button data-score-action="dynamic-p"><em>p</em><span>Suave</span></button><button data-score-action="accent"><em>&gt;</em><span>Acento</span></button></div>
+            <div class="palette-group"><h4>TEXTO</h4><button id="addTextTool">T <span>Texto</span></button><button id="tempoTool">♩ <span>Tempo</span></button><button id="chordTool">⌁ <span>Acorde</span></button></div>
+            <div class="palette-group"><h4>HERRAMIENTAS</h4><button class="selected" data-score-action="select" title="Seleccionar (V)">↖ <span>Seleccionar</span></button><button data-score-action="rest" title="Insertar silencio">𝄽 <span>Silencio</span></button><button id="clearEditorBtn">⌫ <span>Borrar selección</span></button><button id="undoBtn">↶ <span>Deshacer</span></button><button id="redoBtn">↷ <span>Rehacer</span></button></div>
+            <div class="palette-group"><h4>ARCHIVO</h4><button id="saveScoreBtn2">▣ <span>Guardar</span></button><button id="openExportBtn">⇩ <span>Exportar</span></button><button id="printScoreBtn">▤ <span>Imprimir</span></button></div>
+          </aside>
+          <div class="score-workspace">
+            <div class="score-toolbar"><button class="active" data-score-action="select" title="Seleccionar (V)">↖ <span>Seleccionar</span></button><button id="editorUndo" title="Deshacer (Ctrl/Cmd+Z)">↶</button><button id="editorRedo" title="Rehacer (Ctrl/Cmd+Y)">↷</button><button data-score-action="dynamic-mf" title="Dinámica medio fuerte">mf</button><button data-score-action="tie" title="Ligadura">⌒</button><button data-score-action="accent" title="Acento">›</button><button data-score-action="rest" title="Silencio">𝄽</button><button data-score-action="repeat" title="Repetición">↻</button><button id="moreTools" title="Ver atajos y herramientas">Atajos</button></div>
+            <div class="score-sheet" id="scoreSheet"><div id="scoreCanvas" role="application" aria-label="Editor de partitura. Haz clic para insertar notas o enfócalo y pulsa Enter para añadir la siguiente nota; usa flechas para moverla." tabindex="0"></div></div>
+            <div class="editor-bottom"><span>Compases <b id="measureCount">1</b> · ♩=<b id="tempoValue">80</b></span><div class="playback-controls"><button id="prevBtn" title="Compás anterior">|◀</button><button class="round-play" id="playBtn" title="Reproducir partitura">▶</button><button id="stopBtn" title="Detener reproducción">■</button><button id="nextBtn" title="Compás siguiente">▶|</button></div><span id="editorClock">00:00 / 00:00</span><label>Tempo <b id="tempoRangeValue">80</b> BPM <input id="tempoRange" type="range" min="40" max="220" value="80" aria-label="Tempo en BPM"></label><button id="metronomeBtn" class="metronome" title="Alternar metrónomo">♩</button></div>
+          </div>
+          <aside class="editor-right-tools"><button id="instrumentPanelBtn">☷<span>Instrumentos</span></button><button id="propertiesPanelBtn">☷<span>Propiedades</span></button><button id="mixerPanelBtn">☷<span>Mezclador</span></button></aside>
+        </div>
+        <div class="instrument-popover" id="instrumentPopover"><div class="popover-head"><strong>INSTRUMENTOS</strong><button id="closeInstrument">×</button></div><select id="instrumentSelect"><option>Piano</option><option>Guitarra</option><option>Batería</option><option>Bajo</option><option>Violín</option><option>Flauta</option><option>Saxo</option><option>Trompeta</option><option>Cello</option><option>Clarinete</option></select><div class="instrument-grid" id="instrumentGrid"></div></div>
+      </div>
+    </section>
+
+    <!-- RECORDING -->
+    <section class="screen" id="screen-recording">
+      <header class="page-header compact"><div><span class="eyebrow">AUDIO</span><h1>Sistema de Grabación</h1><p>Graba, escucha y detecta notas desde tu micrófono.</p></div><button class="ghost" id="recordSettingsBtn">⚙ Ajustes</button></header>
+      <div class="record-layout"><div class="record-card panel-card"><div class="form-row"><label>Proyecto<select id="recordProject"></select></label><label>Composición<select id="recordComposition"></select></label></div><div class="big-record"><span id="recordTimer">00:00</span><small id="recordState">LISTO PARA GRABAR</small></div><div class="level-meter"><div id="recordLevel"></div></div><div class="record-buttons"><button class="record-main" id="recordBtn" aria-label="Iniciar grabación">●</button><button class="stop-main" id="stopRecordBtn" aria-label="Detener grabación">■</button><button class="ghost" id="playRecordedBtn">▶ Reproducir</button><button class="ghost" id="downloadRecordedBtn">⇩ Descargar</button></div><audio id="recordAudio" controls hidden></audio><p class="helper" id="recordMessage">Selecciona una composición y pulsa el botón rojo para comenzar.</p><div id="recordingList" class="compact-list" aria-live="polite"></div></div><div class="detector-card panel-card"><span class="eyebrow">DETECCIÓN DE NOTAS</span><div class="detected-big" id="detectedNote">—</div><div class="detector-values"><div><span>Frecuencia</span><b id="frequency">—</b></div><div><span>Nota</span><b id="noteLabel">—</b></div><div><span>Confianza</span><b id="noteConfidence">—</b></div></div><button class="primary" id="saveDetectedBtn">＋ Añadir nota a partitura</button></div></div>
+      <section class="record-score-card panel-card" aria-labelledby="recordScoreTitle"><div class="section-title"><div><span class="eyebrow">VEXFLOW</span><h2 id="recordScoreTitle">Partitura de la composición</h2><p>Haz clic en el pentagrama o enfócalo y pulsa Enter para añadir una nota; las notas detectadas también se guardan aquí.</p></div><button class="ghost" id="openScoreEditor" data-view-target="editor">Abrir editor →</button></div><div class="record-score-scroll"><div id="recordingScoreCanvas" role="application" aria-label="Partitura interactiva" tabindex="0"></div></div></section>
+    </section>
+
+    <!-- EDUCATION -->
+    <section class="screen" id="screen-education">
+      <header class="page-header compact"><div><span class="eyebrow">APRENDIZAJE</span><h1>Módulo Educativo</h1><p>Aprende teoría, lectura y composición musical.</p></div></header>
+      <div class="lesson-grid"><button class="lesson-card"><span>♬</span><b>Teoría Musical</b><small>12 lecciones</small></button><button class="lesson-card"><span>♫</span><b>Lectura Rítmica</b><small>8 lecciones</small></button><button class="lesson-card"><span>⌁</span><b>Armonía</b><small>10 lecciones</small></button><button class="lesson-card"><span>✎</span><b>Composición</b><small>7 lecciones</small></button></div>
+      <div class="education-panels"><div class="panel-card progress-card"><div class="section-title"><div><h2>Tu progreso</h2><p>Nivel 7 · Intermedio</p></div><b>750 / 1200 XP</b></div><div class="progress-bar"><span style="width:62%"></span></div><div class="progress-caption"><span>62%</span></div><div class="lesson-feature"><div><span class="lesson-icon">♧</span><div><b>Lección sugerida</b><h3>Intervalos Musicales</h3><p>Aprende a identificar y usar intervalos en tus composiciones.</p><button class="primary">Continuar lección</button></div></div><div class="mini-score" id="miniScore"></div></div></div><div class="panel-card teacher-card"><span class="eyebrow">DOCENTE</span><h2>Actividades y evaluaciones</h2><form id="activityForm"><input id="activityName" placeholder="Nombre de la actividad" required><textarea id="activityDesc" placeholder="Descripción"></textarea><select id="activityProject"><option value="">Sin proyecto</option></select><button class="primary">Crear actividad</button></form><div id="activityList" class="compact-list"></div></div></div>
+    </section>
+
+    <!-- LIBRARY -->
+    <section class="screen" id="screen-library">
+      <header class="page-header compact"><div><span class="eyebrow">BIBLIOTECA</span><h1>Biblioteca de Partituras</h1><p>Explora, organiza y usa partituras para inspirarte.</p></div></header>
+      <div class="library-toolbar"><div class="search-box">⌕<input id="librarySearch" placeholder="Buscar partituras..."></div><div class="filter-pills"><button class="active" data-library-filter="all">Todas</button><button data-library-filter="mine">Mis partituras</button><button data-library-filter="favorites">Favoritas</button><select id="libraryInstrument"><option value="">Instrumento</option><option>Piano</option><option>Guitarra</option><option>Batería</option><option>Bajo</option><option>Violín</option><option>Flauta</option><option>Saxo</option><option>Trompeta</option><option>Cello</option><option>Clarinete</option></select><select id="libraryDifficulty"><option value="">Dificultad</option><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select><select id="libraryGenre"><option value="">Género</option><option>Clásica</option><option>Moderna</option></select></div></div>
+      <div class="library-cards" id="libraryCards"></div>
+    </section>
+
+    <!-- PROFILE -->
+    <section class="screen" id="screen-profile">
+      <header class="page-header compact"><div><span class="eyebrow">CUENTA</span><h1>Perfil de Usuario</h1><p>Gestiona tu información y preferencias.</p></div></header>
+      <div class="profile-layout"><aside class="profile-menu"><button class="active">♙ Información personal</button><button>⚙ Preferencias</button><button>▣ Suscripción</button><button>♧ Seguridad</button><button>♢ Notificaciones</button><button>▦ Dispositivos</button></aside><div class="profile-card panel-card"><div class="profile-head"><div class="avatar large" id="profileAvatar">M</div><div><h2 id="profileDisplayName">María López</h2><span id="profileDisplayRole">Compositora</span><b>Plan Profesional</b></div></div><form id="profileForm"><div class="form-section-title">Información personal</div><label>Nombre completo<input id="profileName" required></label><label>Correo electrónico<input id="profileEmail" disabled></label><label>Biografía<textarea id="profileBio"></textarea></label><label>País<select id="profileCountry"><option value="">Selecciona un país</option><option>Colombia</option><option>México</option><option>España</option><option>Argentina</option><option>Chile</option></select></label><div class="profile-actions"><button type="button" class="ghost" id="cancelProfileBtn">Cancelar</button><button class="primary">Guardar cambios</button></div></form></div></div>
+    </section>
+
+    <!-- HELP -->
+    <section class="screen" id="screen-help"><header class="page-header compact"><div><span class="eyebrow">SOPORTE</span><h1>Ayuda</h1><p>Encuentra respuestas rápidas sobre Lyrics.</p></div></header><div class="faq-grid"><div class="panel-card"><h3>¿Cómo creo un proyecto?</h3><p>Pulsa “Nuevo proyecto”, asigna un nombre y una descripción. Desde allí puedes añadir composiciones, recursos y grabaciones.</p></div><div class="panel-card"><h3>¿Cómo guardo una partitura?</h3><p>Abre el Editor de Partituras, selecciona una composición, añade notas y pulsa Guardar.</p></div><div class="panel-card"><h3>¿Cómo grabo?</h3><p>En Grabación, permite el acceso al micrófono, selecciona la composición y usa el botón rojo.</p></div><div class="panel-card"><h3>¿Puedo exportar?</h3><p>Desde el editor puedes exportar los datos del proyecto y la partitura en formatos compatibles con Lyrics.</p></div></div></section>
+  </main>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal" id="exportModal"><div class="modal-card export-modal"><button class="modal-close" data-close-modal>×</button><div class="modal-title"><span class="eyebrow">EXPORTAR</span><h2>Exportar Partitura</h2><p>Elige el formato y las opciones de exportación.</p></div><div class="export-grid"><button data-export="pdf"><b>PDF</b><span>Para impresión o visualización</span></button><button data-export="musicxml"><b>MusicXML</b><span>Para edición avanzada</span></button><button data-export="midi"><b>MIDI</b><span>Para reproducción</span></button><button data-export="png"><b>Imagen (PNG)</b><span>Para compartir</span></button></div><div class="export-options"><label><input type="checkbox" checked id="includeMeasures"> Incluir marcas de compás</label><label><input type="checkbox" checked id="includeNotes"> Incluir nombres de notas</label><label>Calidad de impresión<select id="exportQuality"><option>Alta (300 DPI)</option><option>Media (150 DPI)</option></select></label></div><button class="primary export-main" id="doExport">Exportar</button></div></div>
+
+<!-- RECORDING SETTINGS -->
+<div class="modal" id="recordSettingsModal"><div class="modal-card settings-modal"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">CONFIGURACIÓN</span><h2>Ajustes de Grabación</h2><div class="settings-tabs"><button class="active">Dispositivos</button><button>Grabación</button><button>Detección de notas</button><button>Visualización</button><button>Atajos de teclado</button></div><div class="settings-form"><label>Dispositivo de entrada<select id="inputDevice"><option>Micrófono predeterminado</option></select></label><label>Nivel de entrada<div class="setting-meter"><span></span></div></label><label>Interfaz de audio<select><option>Predeterminada</option><option>Focusrite Scarlett 2i2</option></select></label><label>Formato de grabación<select><option>WAV (Sin compresión)</option><option>WebM</option></select></label><label>Canal<select><option>Entrada 1</option><option>Estéreo</option></select></label><label>Frecuencia de muestreo<select><option>44.1 kHz</option><option>48 kHz</option></select></label></div><button class="ghost" id="testInput">♩ Probar entrada</button></div></div>
+
+<div class="modal" id="projectModal"><div class="modal-card"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">NUEVO</span><h2>Nuevo proyecto</h2><form id="projectForm"><label>Nombre del proyecto<input id="projectName" required placeholder="Ej. Nocturno en Do menor"></label><label>Descripción<textarea id="projectDesc" placeholder="Describe brevemente tu proyecto..."></textarea></label><div class="modal-actions"><button type="button" class="ghost" data-close-modal>Cancelar</button><button class="primary">Crear proyecto</button></div></form></div></div>
+
+<div class="modal" id="instrumentModal"><div class="modal-card"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">EDITOR</span><h2>Instrumentos</h2><div class="instrument-grid large" id="instrumentModalGrid"></div></div></div>
+
+<div class="modal" id="compositionModal"><div class="modal-card"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">COMPOSICIÓN</span><h2>Nueva composición</h2><form id="compositionForm"><label>Título<input id="compositionTitle" required maxlength="120"></label><label>Instrumento<select id="compositionInstrument"><option>Piano</option><option>Guitarra</option><option>Batería</option><option>Bajo</option><option>Violín</option><option>Flauta</option><option>Saxo</option><option>Trompeta</option><option>Cello</option><option>Clarinete</option></select></label><label>Dificultad<select id="compositionDifficulty"><option value="">Sin definir</option><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select></label><label>Género<select id="compositionGenre"><option value="">Sin definir</option><option>Clásica</option><option>Moderna</option></select></label><div class="modal-actions"><button type="button" class="ghost" data-close-modal>Cancelar</button><button class="primary">Crear composición</button></div></form></div></div>
+
+<div class="modal" id="editorHelpModal"><div class="modal-card editor-help-modal"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">EDITOR DE PARTITURAS</span><h2>Herramientas y atajos</h2><p class="shortcut-hint">Pulsa «Cambiar» y luego la combinación que quieras. Puedes usar Ctrl/Cmd, Alt y Shift. Pulsa «Quitar» para desasignar un atajo; Escape cancela la captura y Tab queda reservado para navegar. Los atajos no se ejecutan mientras escribes en un campo.</p><div class="shortcut-list" id="shortcutSettingsList"></div><div class="shortcut-settings-actions"><button class="ghost" id="resetEditorShortcuts" type="button">Restaurar atajos predeterminados</button></div></div></div>
+<div class="modal" id="editorPropertiesModal"><div class="modal-card"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">PARTITURA</span><h2>Propiedades y mezcla</h2><div class="editor-property-grid"><label>Compás superior<select id="meterNumerator"><option>4</option><option>3</option><option>2</option><option>6</option></select></label><label>Compás inferior<select id="meterDenominator"><option>4</option><option>8</option><option>2</option></select></label><label>Instrumento<select id="scoreInstrumentSelect"><option>Piano</option><option>Guitarra</option><option>Batería</option><option>Bajo</option><option>Violín</option><option>Flauta</option><option>Saxo</option><option>Trompeta</option><option>Cello</option><option>Clarinete</option></select></label><label>Volumen <input id="mixerVolume" type="range" min="0" max="100" value="70"></label><p class="editor-property-status" id="selectedNoteProperties">Selecciona una nota para editarla.</p></div></div></div>
+<div class="modal" id="editorAnnotationModal"><div class="modal-card"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">ANOTACIÓN</span><h2 id="editorAnnotationTitle">Añadir texto a la partitura</h2><form id="editorAnnotationForm"><label id="editorAnnotationLabel">Texto<input id="editorAnnotationInput" required maxlength="80"></label><div class="modal-actions"><button type="button" class="ghost" data-close-modal>Cancelar</button><button class="primary">Aplicar</button></div></form></div></div>
+
+<div id="toast" class="toast"></div>
+<script src="dashboard.js"></script>
+</body>
+</html>
