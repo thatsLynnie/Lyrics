@@ -25,6 +25,7 @@
       <button class="nav-item" data-view="education"><span>▣</span>Módulo Educativo</button>
       <button class="nav-item" data-view="library"><span>▤</span>Biblioteca</button>
       <button class="nav-item" data-view="profile"><span>◉</span>Configuración</button>
+      <button class="nav-item" data-view="admin" id="adminNav" hidden><span>⚙</span>Administración</button>
       <button class="nav-item" data-view="help"><span>?</span>Ayuda</button>
     </nav>
     <div class="sidebar-user" id="sidebarUser">
@@ -116,7 +117,22 @@
     <!-- PROFILE -->
     <section class="screen" id="screen-profile">
       <header class="page-header compact"><div><span class="eyebrow">CUENTA</span><h1>Perfil de Usuario</h1><p>Gestiona tu información y preferencias.</p></div></header>
-      <div class="profile-layout"><aside class="profile-menu"><button class="active">♙ Información personal</button><button>⚙ Preferencias</button><button>▣ Suscripción</button><button>♧ Seguridad</button><button>♢ Notificaciones</button><button>▦ Dispositivos</button></aside><div class="profile-card panel-card"><div class="profile-head"><div class="avatar large" id="profileAvatar">M</div><div><h2 id="profileDisplayName">María López</h2><span id="profileDisplayRole">Compositora</span><b>Plan Profesional</b></div></div><form id="profileForm"><div class="form-section-title">Información personal</div><label>Nombre completo<input id="profileName" required></label><label>Correo electrónico<input id="profileEmail" disabled></label><label>Biografía<textarea id="profileBio"></textarea></label><label>País<select id="profileCountry"><option value="">Selecciona un país</option><option>Colombia</option><option>México</option><option>España</option><option>Argentina</option><option>Chile</option></select></label><div class="profile-actions"><button type="button" class="ghost" id="cancelProfileBtn">Cancelar</button><button class="primary">Guardar cambios</button></div></form></div></div>
+      <div class="profile-layout"><aside class="profile-menu"><button class="active">♙ Información personal</button><button>⚙ Preferencias</button><button>▣ Suscripción</button><button>♧ Seguridad</button><button>♢ Notificaciones</button><button>▦ Dispositivos</button></aside><div class="profile-card panel-card"><div class="profile-head"><div class="avatar large" id="profileAvatar">U</div><div><h2 id="profileDisplayName">Usuario</h2><span id="profileDisplayRole">Compositora</span><b>Plan Profesional</b></div></div><form id="profileForm"><div class="form-section-title">Información personal</div><label>Nombre de usuario<input id="profileName" required></label><label>Correo electrónico<input id="profileEmail" disabled></label><label>Biografía<textarea id="profileBio"></textarea></label><label>País<select id="profileCountry"><option value="">Selecciona un país</option><option>Colombia</option><option>México</option><option>España</option><option>Argentina</option><option>Chile</option></select></label><div class="profile-actions"><button type="button" class="ghost" id="cancelProfileBtn">Cancelar</button><button class="primary">Guardar cambios</button></div></form></div></div>
+    </section>
+
+    <!-- ADMINISTRATION -->
+    <section class="screen" id="screen-admin">
+      <header class="page-header compact"><div><span class="eyebrow">ADMINISTRACIÓN</span><h1>Datos de Lyrics</h1><p>Consulta y administra registros de la base de datos. Los cambios pueden afectar a otros usuarios.</p></div></header>
+      <div class="panel-card admin-panel">
+        <div class="toolbar-row admin-toolbar">
+          <label for="adminTableSelect">Tabla<select id="adminTableSelect"></select></label>
+          <label for="adminSearch">Buscar<input id="adminSearch" type="search" maxlength="100" placeholder="Filtrar registros"></label>
+          <div class="admin-toolbar-actions"><button class="ghost" id="adminReloadBtn" type="button">Actualizar</button><button class="primary" id="adminCreateBtn" type="button">＋ Nuevo registro</button></div>
+        </div>
+        <p class="admin-status" id="adminStatus" aria-live="polite"></p>
+        <div class="admin-table-scroll"><table class="admin-table"><thead id="adminTableHead"></thead><tbody id="adminTableBody"></tbody></table></div>
+        <div class="admin-pagination"><span id="adminRowCount"></span><button class="ghost" id="adminMoreBtn" type="button" hidden>Ver más</button></div>
+      </div>
     </section>
 
     <!-- HELP -->
@@ -139,6 +155,7 @@
 <div class="modal" id="editorHelpModal"><div class="modal-card editor-help-modal"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">EDITOR DE PARTITURAS</span><h2>Herramientas y atajos</h2><p class="shortcut-hint">Pulsa «Cambiar» y luego la combinación que quieras. Puedes usar Ctrl/Cmd, Alt y Shift. Pulsa «Quitar» para desasignar un atajo; Escape cancela la captura y Tab queda reservado para navegar. Los atajos no se ejecutan mientras escribes en un campo.</p><div class="shortcut-list" id="shortcutSettingsList"></div><div class="shortcut-settings-actions"><button class="ghost" id="resetEditorShortcuts" type="button">Restaurar atajos predeterminados</button></div></div></div>
 <div class="modal" id="editorPropertiesModal"><div class="modal-card"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">PARTITURA</span><h2>Propiedades y mezcla</h2><div class="editor-property-grid"><label>Compás superior<select id="meterNumerator"><option>4</option><option>3</option><option>2</option><option>6</option></select></label><label>Compás inferior<select id="meterDenominator"><option>4</option><option>8</option><option>2</option></select></label><label>Instrumento<select id="scoreInstrumentSelect"><option>Piano</option><option>Guitarra</option><option>Batería</option><option>Bajo</option><option>Violín</option><option>Flauta</option><option>Saxo</option><option>Trompeta</option><option>Cello</option><option>Clarinete</option></select></label><label>Volumen <input id="mixerVolume" type="range" min="0" max="100" value="70"></label><p class="editor-property-status" id="selectedNoteProperties">Selecciona una nota para editarla.</p></div></div></div>
 <div class="modal" id="editorAnnotationModal"><div class="modal-card"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">ANOTACIÓN</span><h2 id="editorAnnotationTitle">Añadir texto a la partitura</h2><form id="editorAnnotationForm"><label id="editorAnnotationLabel">Texto<input id="editorAnnotationInput" required maxlength="80"></label><div class="modal-actions"><button type="button" class="ghost" data-close-modal>Cancelar</button><button class="primary">Aplicar</button></div></form></div></div>
+<div class="modal" id="adminRecordModal"><div class="modal-card admin-record-modal"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">ADMINISTRACIÓN</span><h2 id="adminRecordTitle">Registro</h2><p id="adminRecordHint"></p><form id="adminRecordForm"><div class="admin-record-fields" id="adminRecordFields"></div><div class="modal-actions"><button type="button" class="ghost" data-close-modal>Cancelar</button><button class="primary" id="adminRecordSave">Guardar</button></div></form></div></div>
 
 <div id="toast" class="toast"></div>
 <script src="dashboard.js"></script>

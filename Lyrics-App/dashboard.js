@@ -1,3 +1,39 @@
+function renderScoreIntoContinuous(container){
+	if(!container)return;
+	container.innerHTML='';
+	if(!window.Vex?.Flow){container.innerHTML='<div class="score-error">No se pudo cargar VexFlow. Comprueba la conexión y vuelve a cargar el editor.</div>';return}
+	try{
+		const VF=Vex.Flow,measures=scoreMeasures(),available=Math.max(320,(container.parentElement?.clientWidth||1000)-16),barsPerRow=Math.max(1,measures.length),measureWidth=210,width=Math.max(available,40+barsPerRow*measureWidth),rowHeight=170,height=rowHeight+35,renderer=new VF.Renderer(container,VF.Renderer.Backends.SVG);
+		renderer.resize(width,height);
+		const svg=container.querySelector('svg'),ctx=renderer.getContext(),renderedNotes=[];
+		if(svg){svg.dataset.barsPerRow=String(barsPerRow);svg.dataset.measureWidth=String(measureWidth)}
+		measures.forEach((measure,barIndex)=>{
+			const stave=new VF.Stave(20+barIndex*measureWidth,22,measureWidth-9);
+			if(barIndex===0){stave.addClef('treble');stave.addTimeSignature(`${state.meter.numerator}/${state.meter.denominator}`)}
+			stave.setEndBarType(VF.Barline.type.SINGLE).setContext(ctx).draw();
+			const noteObjects=measure.indices.map(index=>{
+				const source=state.notes[index],duration=`${source.duration||'q'}${source.dotted?'d':''}${source.rest?'r':''}`,note=new VF.StaveNote({clef:'treble',keys:[noteToVex(source)],duration}),accidental=source.accidental??source.name.match(/[#b]$/)?.[0];
+				if(accidental)note.addModifier(new VF.Accidental(accidental),0);
+				if(source.accent)note.addModifier(new VF.Articulation('a>').setPosition(VF.Modifier.Position.ABOVE),0);
+				return note;
+			});
+			if(!noteObjects.length)return;
+			const voice=new VF.Voice({num_beats:state.meter.numerator,beat_value:state.meter.denominator});
+			voice.setStrict(false);voice.addTickables(noteObjects);new VF.Formatter().joinVoices([voice]).format([voice],measureWidth-70);voice.draw(ctx,stave);
+			const groups=container.querySelectorAll('.vf-stavenote'),offset=groups.length-noteObjects.length;
+			measure.indices.forEach((index,localIndex)=>{
+				const note=noteObjects[localIndex],x=note.getAbsoluteX(),y=note.getYs()[0],data=state.notes[index],group=groups[offset+localIndex];
+				renderedNotes[index]=note;
+				if(group){group.dataset.noteIndex=String(index);group.setAttribute('tabindex','0');group.setAttribute('role','button');group.setAttribute('aria-label',`${data.rest?'Silencio':`${data.name}${data.octave}`}, ${data.duration||'negra'}${data.dotted?' con puntillo':''}`)}
+				if(data.dynamic){const label=document.createElementNS('http://www.w3.org/2000/svg','text');label.setAttribute('x',String(x-4));label.setAttribute('y',String(y+30));label.setAttribute('text-anchor','middle');label.setAttribute('font-family','serif');label.setAttribute('font-size','16');label.setAttribute('font-style','italic');label.classList.add('score-dynamic');label.textContent=data.dynamic;svg.appendChild(label)}
+				if(data.text)ctx.fillText(data.text,x-4,y-35);
+				if(data.chord)ctx.fillText(data.chord,x-4,y-50);
+			});
+		});
+		state.ties.forEach(([first,last])=>{if(renderedNotes[first]&&renderedNotes[last])new VF.StaveTie({firstNote:renderedNotes[first],lastNote:renderedNotes[last],first_indices:[0],last_indices:[0]}).setContext(ctx).draw()});
+		setSelected([...state.selectedNotes].filter(index=>index<state.notes.length));
+	}catch(error){console.error('No se pudo dibujar la partitura:',error);container.innerHTML=`<div class="score-error">No se pudo dibujar la partitura: ${esc(error.message||'error de notación')}</div>`}
+}
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const state={user:null,projects:[],library:[],libraryFilter:'all',editProjectId:null,notes:[],ties:[],history:[],redo:[],selectedNotes:new Set(),selectedDuration:'q',selectedAccidental:null,pendingMark:null,toolMode:'note',meter:{numerator:4,denominator:4},media:null,recorder:null,recordChunks:[],audioCtx:null,analyser:null,raf:null,timer:null,recordStart:0,recordedUrl:null,currentProject:null,currentComposition:null,playing:false,playTimer:null,editorSeconds:0,waveBars:[],audioContext:null,playbackTimer:null,playbackIndex:0,metronome:false,volume:.7};
 const instruments=[['♬','Piano'],['♩','Guitarra'],['◉','Batería'],['♬','Bajo'],['♮','Violín'],['♪','Flauta'],['♩','Saxo'],['♬','Trompeta'],['♮','Cello'],['♪','Clarinete'],['•••','Más']];
@@ -40,10 +76,10 @@ function insertNextNote(){const selected=[...state.selectedNotes],index=selected
 function runEditorShortcut(action){const durations={durationWhole:'w',durationHalf:'h',durationQuarter:'q',durationEighth:'8',durationSixteenth:'16'};if(durations[action]){$(`[data-note="${durations[action]}"]`)?.click();return}if(action==='insertNextNote'){insertNextNote();return}if(action==='selectTool'){$('[data-score-action="select"]')?.click();return}if(action==='pitchUp'||action==='pitchDown'){moveSelectedPitch(action==='pitchUp'?1:-1);return}if(action==='moveLeft'||action==='moveRight'){reorderSelected(action==='moveLeft'?-1:1);return}if(action==='selectAll'){setSelected(state.notes.map((_,index)=>index));return}if(action==='delete'){removeSelectedNotes();return}if(action==='undo'){undo();return}if(action==='redo'){redo();return}if(action==='save'){saveScore($('#scoreComposition').value);return}if(action==='sharp'){applyAccidental('#');return}if(action==='flat'){applyAccidental('b');return}if(action==='natural')applyAccidental('n')}
 function initials(name='Usuario'){return name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()}
 function openModal(id){$(id).classList.add('show')}function closeModal(id){if(id==='#editorHelpModal')capturingShortcut=null;$(id).classList.remove('show')}
-function setView(view){$('#app').classList.toggle('editor-mode',view==='editor');$$('.screen').forEach(s=>s.classList.toggle('active',s.id===`screen-${view}`));$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));if(window.innerWidth<760)$('#sidebar').classList.remove('open');if(view==='dashboard')loadDashboard();if(view==='projects')loadProjects();if(view==='editor')loadEditorData();if(view==='recording')loadRecordingData();if(view==='education')loadEducation();if(view==='library')loadLibrary();if(view==='profile')renderProfile();}
+function setView(view){$('#app').classList.toggle('editor-mode',view==='editor');$$('.screen').forEach(s=>s.classList.toggle('active',s.id===`screen-${view}`));$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));if(window.innerWidth<760)$('#sidebar').classList.remove('open');if(view==='dashboard')loadDashboard();if(view==='projects')loadProjects();if(view==='editor')loadEditorData();if(view==='recording')loadRecordingData();if(view==='education')loadEducation();if(view==='library')loadLibrary();if(view==='profile')renderProfile();if(view==='admin')loadAdminData();}
 $$('.nav-item').forEach(b=>b.onclick=()=>setView(b.dataset.view));$$('[data-view-target]').forEach(b=>b.onclick=()=>setView(b.dataset.viewTarget));$('#mobileMenu').onclick=()=>$('#sidebar').classList.toggle('open');
 $('#logoutBtn').onclick=async()=>{await api('/api/logout',{method:'POST'});location.href='/'};
-async function loadMe(){const d=await api('/api/me');if(!d.user){location.href='/';return}state.user=d.user;const name=d.user.nombre||'Usuario';$('#helloName').textContent=name.split(' ')[0];$('#sideUserName').textContent=name;$('#sideUserRole').textContent=(d.user.rol||'compositor').replace(/^./,x=>x.toUpperCase());$('#sideAvatar').textContent=initials(name);$('#profileDisplayName').textContent=name;$('#profileDisplayRole').textContent=(d.user.rol||'compositor').replace(/^./,x=>x.toUpperCase());$('#profileAvatar').textContent=initials(name);$('#profileName').value=name;$('#profileEmail').value=d.user.correo;$('#profileBio').value=d.user.biografia||'';$('#profileCountry').value=d.user.pais||'';}
+async function loadMe(){const d=await api('/api/me');if(!d.user){location.href='/';return}state.user=d.user;$('#adminNav').hidden=d.user.rol!=='administrador';const name=d.user.nombre||'Usuario';$('#helloName').textContent=name.split(' ')[0];$('#sideUserName').textContent=name;$('#sideUserRole').textContent=(d.user.rol||'compositor').replace(/^./,x=>x.toUpperCase());$('#sideAvatar').textContent=initials(name);$('#profileDisplayName').textContent=name;$('#profileDisplayRole').textContent=(d.user.rol||'compositor').replace(/^./,x=>x.toUpperCase());$('#profileAvatar').textContent=initials(name);$('#profileName').value=name;$('#profileEmail').value=d.user.correo;$('#profileBio').value=d.user.biografia||'';$('#profileCountry').value=d.user.pais||'';}
 async function loadProjects(){try{const d=await api('/api/projects');state.projects=d.projects||[];renderProjects()}catch(e){toast(e.message)}}
 function projectThumb(p){return `<div class="score-thumb"></div>`}
 function projectCard(p,small=false){const actions=small?'':`<div class="project-meta"><span class="badge">${p.composiciones||0} composiciones</span><span class="badge">${p.recursos||0} recursos</span><span class="badge">${esc(p.estado||'activo')}</span></div><div class="project-actions"><button class="primary" onclick="openProject(${p.id_proyecto})">Abrir</button><button class="ghost" onclick="editProject(${p.id_proyecto})">Editar</button><button class="ghost" onclick="deleteProject(${p.id_proyecto})">Eliminar</button></div>`;return `<article class="${small?'recent-card':'project-large'}" data-project-id="${p.id_proyecto}" data-name="${esc(p.nombre)}"${small?' tabindex="0" role="button"':''}>${projectThumb(p)}<h3>${esc(p.nombre)}</h3><p>${small?`Actualizado · ${esc(p.fecha_actualizacion||'')}`:esc(p.descripcion||'Sin descripción')}</p>${actions}</article>`}
@@ -87,7 +123,7 @@ $('#scoreCanvas').onclick=e=>{const group=e.target.closest('.vf-stavenote[data-n
 function noteAtStaffPosition(event,canvas){const svg=canvas.querySelector('svg');if(!svg)return null;const rect=svg.getBoundingClientRect(),scale=svg.viewBox.baseVal.height/rect.height,y=(event.clientY-rect.top)*scale,rowHeight=170,row=Math.max(0,Math.floor(y/rowHeight)),step=Math.max(-16,Math.min(30,Math.round((row*rowHeight+102-y)/5)));return pitchAtPosition(step)}
 $('#addCompositionBtn').onclick=()=>{if(!state.currentProject)return toast('Crea o abre un proyecto primero.');$('#compositionForm').reset();openModal('#compositionModal');$('#compositionTitle').focus()};
 $('#compositionForm').onsubmit=async e=>{e.preventDefault();const pid=state.currentProject?.id_proyecto;if(!pid)return toast('Crea o abre un proyecto primero.');try{const d=await api('/api/projects/'+pid+'/compositions',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({titulo:$('#compositionTitle').value.trim(),instrumento:$('#compositionInstrument').value,dificultad:$('#compositionDifficulty').value,genero:$('#compositionGenre').value})});state.currentComposition=String(d.id_composicion);await fillCompositions(pid);$('#scoreComposition').value=String(d.id_composicion);$('#recordComposition').value=String(d.id_composicion);closeModal('#compositionModal');toast('Composición creada.')}catch(e){toast(e.message)}};
-function removeSelectedNotes(clearWhenEmpty=false){const removed=[...state.selectedNotes].sort((a,b)=>b-a);if(!removed.length){if(!clearWhenEmpty)return toast('Selecciona una nota o usa “Borrar selección” para limpiar toda la partitura.');pushHistory();state.notes=[];state.ties=[];renderScore();dirtyScore();return}pushHistory();removed.forEach(index=>state.notes.splice(index,1));state.ties=state.ties.filter(pair=>!pair.some(index=>removed.includes(index))).map(pair=>pair.map(index=>index-removed.filter(removedIndex=>removedIndex<index).length));state.selectedNotes.clear();renderScore();dirtyScore()}
+function removeSelectedNotes(clearWhenEmpty=false){const removed=[...state.selectedNotes].sort((a,b)=>b-a);if(!removed.length){if(!clearWhenEmpty)return toast('Selecciona una nota o usa “Borrar selección” para limpiar toda la partitura.');pushHistory();state.notes=[];state.ties=[];renderScore();dirtyScore();return}const nextIndex=Math.min(...removed);pushHistory();removed.forEach(index=>state.notes.splice(index,1));state.ties=state.ties.filter(pair=>!pair.some(index=>removed.includes(index))).map(pair=>pair.map(index=>index-removed.filter(removedIndex=>removedIndex<index).length));state.selectedNotes=nextIndex<state.notes.length?new Set([nextIndex]):new Set();renderScore();dirtyScore()}
 $('#clearEditorBtn').onclick=()=>removeSelectedNotes(true);
 function undo(){if(!state.history.length)return;state.redo.push(snapshot());restoreSnapshot(state.history.pop());dirtyScore()}function redo(){if(!state.redo.length)return;state.history.push(snapshot());restoreSnapshot(state.redo.pop());dirtyScore()}$('#undoBtn').onclick=undo;$('#redoBtn').onclick=redo;$('#editorUndo').onclick=undo;$('#editorRedo').onclick=redo;
 let annotationMode='text';function openAnnotation(mode){annotationMode=mode;$('#editorAnnotationTitle').textContent=mode==='text'?'Añadir texto a la partitura':'Añadir acorde';$('#editorAnnotationLabel').firstChild.textContent=mode==='text'?'Texto':'Acorde';$('#editorAnnotationInput').value='';openModal('#editorAnnotationModal');$('#editorAnnotationInput').focus()}
@@ -138,5 +174,126 @@ function midiForNote(note){const semitones={C:0,D:2,E:4,F:5,G:7,A:9,B:11};return
 function stopPlayback(){state.playing=false;clearTimeout(state.playbackTimer);if(state.audioContext){state.audioContext.close();state.audioContext=null}$('#playBtn').textContent='▶';$('#playBtn').classList.remove('is-playing')}
 function schedulePlayback(){if(!state.playing)return;if(state.playbackIndex>=state.notes.length){stopPlayback();state.editorSeconds=0;$('#editorClock').textContent=`00:00 / ${formatTime(state.notes.reduce((sum,n)=>sum+noteBeats(n),0)*60/Number($('#tempoValue').textContent))}`;return}const start=state.playbackIndex,note=state.notes[start],bpm=Number($('#tempoValue').textContent)||80,beatSeconds=60/bpm;let end=start;while(end<state.notes.length-1&&state.ties.some(pair=>pair[0]===end&&pair[1]===end+1)&&!state.notes[end+1].rest&&midiForNote(state.notes[end])===midiForNote(state.notes[end+1]))end++;const duration=state.notes.slice(start,end+1).reduce((sum,item)=>sum+noteBeats(item),0)*beatSeconds;$('#editorClock').textContent=`${formatTime(state.editorSeconds)} / ${formatTime(state.notes.reduce((sum,n)=>sum+noteBeats(n),0)*beatSeconds)}`;if(!note.rest){const oscillator=state.audioContext.createOscillator(),gain=state.audioContext.createGain();oscillator.type='sine';oscillator.frequency.value=440*Math.pow(2,(midiForNote(note)-69)/12);gain.gain.setValueAtTime(0,state.audioContext.currentTime);gain.gain.linearRampToValueAtTime(state.volume*.18,state.audioContext.currentTime+.015);gain.gain.setTargetAtTime(.001,state.audioContext.currentTime+Math.max(.03,duration*.82),.03);oscillator.connect(gain);gain.connect(state.audioContext.destination);oscillator.start();oscillator.stop(state.audioContext.currentTime+duration)}if(state.metronome){const tick=state.audioContext.createOscillator(),gain=state.audioContext.createGain();tick.frequency.value=1200;gain.gain.value=.08;tick.connect(gain);gain.connect(state.audioContext.destination);tick.start();tick.stop(state.audioContext.currentTime+.035)}state.editorSeconds+=duration;state.playbackIndex=end+1;state.playbackTimer=setTimeout(schedulePlayback,duration*1000)}
 $('#playBtn').onclick=async()=>{if(state.playing){stopPlayback();return}if(!state.notes.length)return toast('Añade notas antes de reproducir la partitura.');try{state.audioContext=new(window.AudioContext||window.webkitAudioContext)();await state.audioContext.resume();state.playing=true;state.playbackIndex=0;state.editorSeconds=0;$('#playBtn').textContent='Ⅱ';$('#playBtn').classList.add('is-playing');schedulePlayback()}catch(e){stopPlayback();toast('No se pudo iniciar la reproducción: '+e.message)}};$('#stopBtn').onclick=()=>{stopPlayback();state.playbackIndex=0;state.editorSeconds=0;$('#editorClock').textContent='00:00 / 00:00'};$('#prevBtn').onclick=()=>{state.playbackIndex=Math.max(0,state.playbackIndex-1);state.editorSeconds=state.notes.slice(0,state.playbackIndex).reduce((sum,n)=>sum+noteBeats(n),0)*60/Number($('#tempoValue').textContent||80);if(state.playing){clearTimeout(state.playbackTimer);schedulePlayback()}else toast(`Nota ${state.playbackIndex+1}`)};$('#nextBtn').onclick=()=>{state.playbackIndex=Math.min(state.notes.length,state.playbackIndex+1);state.editorSeconds=state.notes.slice(0,state.playbackIndex).reduce((sum,n)=>sum+noteBeats(n),0)*60/Number($('#tempoValue').textContent||80);if(state.playing){clearTimeout(state.playbackTimer);schedulePlayback()}else toast(`Nota ${state.playbackIndex}`)};
+const adminState={tables:[],table:'',columns:[],rows:[],roles:[],total:0,offset:0,readOnly:true,userMode:false,editKey:null};
+function adminStatus(message,error=false){const status=$('#adminStatus');status.textContent=message;status.classList.toggle('error',error)}
+function adminBody(data){return{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}}
+async function loadAdminData(){
+	try{
+		if(state.user?.rol!=='administrador'){adminStatus('Se requiere una cuenta administradora.',true);return}
+		const result=await api('/api/admin/tables');
+		adminState.tables=result.tables||[];
+		const select=$('#adminTableSelect'),previous=adminState.table;
+		select.innerHTML=adminState.tables.map(table=>`<option value="${esc(table.name)}">${esc(table.label)} (${table.count})</option>`).join('');
+		if(previous&&adminState.tables.some(table=>table.name===previous))select.value=previous;
+		adminState.table=select.value||'';
+		await loadAdminRecords(true);
+	}catch(error){adminStatus(error.message,true)}
+}
+async function loadAdminRecords(reset=false){
+	if(reset)adminState.offset=0;
+	if(!adminState.table)return;
+	adminStatus('Cargando registros…');
+	try{
+		const previousRows=reset?[]:adminState.rows;
+		const query=new URLSearchParams({q:$('#adminSearch').value.trim(),limit:'50',offset:String(adminState.offset)});
+		if(adminState.table==='users'){
+			const result=await api(`/api/admin/users?q=${encodeURIComponent($('#adminSearch').value.trim())}`);
+			adminState.userMode=true;adminState.roles=result.roles||[];adminState.columns=[];adminState.rows=result.users||[];adminState.total=adminState.rows.length;adminState.readOnly=false;
+			renderAdminUsers();return;
+		}
+		adminState.userMode=false;
+		const result=await api(`/api/admin/tables/${encodeURIComponent(adminState.table)}?${query}`);
+		adminState.columns=result.columns||[];adminState.rows=previousRows.concat(result.rows||[]);adminState.total=result.total||0;adminState.readOnly=result.read_only;
+		$('#adminCreateBtn').hidden=adminState.readOnly||adminState.table==='roles';
+		renderAdminTable();
+	}catch(error){adminStatus(error.message,true)}
+}
+function adminValue(value){if(value===null||value===undefined)return '';if(typeof value==='object')return JSON.stringify(value);return String(value)}
+function renderAdminUsers(){
+	$('#adminCreateBtn').hidden=false;$('#adminCreateBtn').textContent='＋ Crear usuario';
+	$('#adminTableHead').innerHTML='<tr><th>ID</th><th>Usuario</th><th>Correo</th><th>Estado</th><th>Creación</th><th>Rol</th><th>Acciones</th></tr>';
+	$('#adminTableBody').innerHTML=adminState.rows.map((user,index)=>`<tr><td>${esc(user.id_usuario)}</td><td>${esc(user.nombre)}</td><td>${esc(user.correo)}</td><td>${esc(user.estado)}</td><td>${esc(user.fecha_creacion)}</td><td><select data-admin-role="${index}" aria-label="Rol de ${esc(user.nombre)}">${adminState.roles.map(role=>`<option value="${role.id_rol}"${Number(role.id_rol)===Number(user.id_rol)?' selected':''}>${esc(role.nombre)}</option>`).join('')}</select></td><td><button class="ghost danger-button" type="button" data-admin-delete-user="${index}">Eliminar</button></td></tr>`).join('')||'<tr><td colspan="7">No hay usuarios que coincidan con la búsqueda.</td></tr>';
+	$('#adminRowCount').textContent=`${adminState.rows.length} usuarios (máximo 100 por búsqueda)`;
+	$('#adminMoreBtn').hidden=true;
+	adminStatus('Cambia los roles desde esta tabla. Las contraseñas nunca se muestran.');
+	$$('[data-admin-role]').forEach(select=>select.onchange=async()=>{const user=adminState.rows[Number(select.dataset.adminRole)];try{await api(`/api/users/${user.id_usuario}/role`,adminBody({id_rol:Number(select.value)}));await loadAdminRecords(true);toast('Rol actualizado.')}catch(error){toast(error.message);select.value=String(user.id_rol)}});
+	$$('[data-admin-delete-user]').forEach(button=>button.onclick=async()=>{const user=adminState.rows[Number(button.dataset.adminDeleteUser)];if(!confirm(`¿Eliminar la cuenta de ${user.nombre} (${user.correo}) y sus datos relacionados? Esta acción no se puede deshacer.`))return;try{await api(`/api/users/${user.id_usuario}`,{method:'DELETE'});await loadAdminData();toast('Usuario eliminado.')}catch(error){toast(error.message)}});
+}
+function renderAdminTable(){
+	const columns=adminState.columns;
+	const actions=adminState.readOnly?'':'<th>Acciones</th>';
+	$('#adminCreateBtn').hidden=adminState.readOnly;
+	$('#adminCreateBtn').textContent='＋ Nuevo registro';
+	$('#adminTableHead').innerHTML=`<tr>${columns.map(column=>`<th>${esc(column.name)}</th>`).join('')}${actions}</tr>`;
+	$('#adminTableBody').innerHTML=adminState.rows.map((row,index)=>`<tr>${columns.map(column=>`<td title="${esc(adminValue(row[column.name]))}">${esc(adminValue(row[column.name]))}</td>`).join('')}${actions?`<td class="admin-actions"><button class="ghost" type="button" data-admin-edit="${index}">Editar</button><button class="ghost danger-button" type="button" data-admin-delete="${index}">Borrar</button></td>`:''}</tr>`).join('')||`<tr><td colspan="${columns.length+(actions?1:0)}">No hay registros que coincidan con la búsqueda.</td></tr>`;
+	$('#adminRowCount').textContent=`Mostrando ${adminState.rows.length} de ${adminState.total} registros`;
+	$('#adminMoreBtn').hidden=adminState.offset+adminState.rows.length>=adminState.total;
+	adminStatus(adminState.readOnly?'Vista protegida; administra cuentas y roles desde la tabla Usuarios.':'Los cambios se aplican directamente a la base de datos.');
+	$$('[data-admin-edit]').forEach(button=>button.onclick=()=>openAdminRecord(adminState.rows[Number(button.dataset.adminEdit)]));
+	$$('[data-admin-delete]').forEach(button=>button.onclick=()=>deleteAdminRecord(adminState.rows[Number(button.dataset.adminDelete)]));
+}
+function openAdminRecord(row=null){
+	adminState.editKey=null;
+	const creating=!row;
+	$('#adminRecordTitle').textContent=creating?'Crear registro':'Editar registro';
+	$('#adminRecordHint').textContent=creating?'Los campos con valores predeterminados pueden dejarse vacíos.':'Los identificadores primarios no se pueden modificar.';
+	const fields=$('#adminRecordFields');
+	fields.innerHTML='';
+	if(adminState.table==='users'){
+		$('#adminRecordTitle').textContent='Crear usuario';
+		$('#adminRecordHint').textContent='La contraseña se guarda protegida y nunca se muestra en el panel.';
+		fields.innerHTML=`<label>Nombre de usuario<input name="nombre" required minlength="2" maxlength="160"></label><label>Correo electrónico<input name="correo" type="email" required maxlength="255"></label><label>Contraseña inicial<input name="password" type="password" required minlength="8" autocomplete="new-password"></label><label>Rol<select name="id_rol">${adminState.roles.map(role=>`<option value="${role.id_rol}">${esc(role.nombre)}</option>`).join('')}</select></label>`;
+		$('#adminRecordSave').textContent='Crear usuario';
+		openModal('#adminRecordModal');return;
+	}
+	const editable=creating?adminState.columns.filter(column=>!column.auto&&(!column.default||column.primary)):adminState.columns.filter(column=>column.editable);
+	if(row)adminState.editKey=Object.fromEntries(adminState.columns.filter(column=>column.primary).map(column=>[column.name,row[column.name]]));
+	fields.innerHTML=editable.map(column=>{
+		const inputType=['int','integer','tinyint','smallint','mediumint','bigint','float','double','real','decimal','numeric'].includes(column.type)?'number':'text';
+		const step=inputType==='number'&&!['int','integer','tinyint','smallint','mediumint','bigint'].includes(column.type)?'any':'1';
+		const value=creating?'':adminValue(row[column.name]);
+		const label=`${column.name}${!column.nullable&&!column.default&&!column.auto?' *':''}`;
+		const control=['text','tinytext','mediumtext','longtext','json'].includes(column.type)?`<textarea name="${esc(column.name)}"${!column.nullable&&!column.default?' required':''}>${esc(value)}</textarea>`:`<input name="${esc(column.name)}" type="${inputType}" step="${step}" value="${esc(value)}"${!column.nullable&&!column.default?' required':''}>`;
+		return `<label>${esc(label)}${control}</label>`;
+	}).join('');
+	$('#adminRecordSave').textContent=creating?'Crear registro':'Guardar cambios';
+	openModal('#adminRecordModal');
+}
+async function saveAdminRecord(event){
+	event.preventDefault();
+	const form=event.currentTarget,fields=Object.fromEntries(new FormData(form).entries());
+	try{
+		if(adminState.table==='users'){
+			fields.id_rol=Number(fields.id_rol);
+			await api('/api/admin/users',adminBody({nombre:fields.nombre,correo:fields.correo,password:fields.password,id_rol:fields.id_rol}));
+		}else{
+			const values={};
+			for(const column of adminState.columns){
+				if(!Object.prototype.hasOwnProperty.call(fields,column.name))continue;
+				const value=fields[column.name];
+				if(value===''&&column.default!==null&&column.default!==undefined)continue;
+				values[column.name]=value===''&&column.nullable?null:value;
+			}
+			const creating=!adminState.editKey;
+			await api(`/api/admin/tables/${encodeURIComponent(adminState.table)}`,{
+				method:creating?'POST':'PUT',headers:{'Content-Type':'application/json'},
+				body:JSON.stringify(creating?values:{key:adminState.editKey,values})
+			});
+		}
+		closeModal('#adminRecordModal');form.reset();await loadAdminData();toast(adminState.table==='users'?'Usuario creado.':'Registro guardado.');
+	}catch(error){toast(error.message)}
+}
+async function deleteAdminRecord(row){
+	const keys=Object.fromEntries(adminState.columns.filter(column=>column.primary).map(column=>[column.name,row[column.name]]));
+	if(!confirm('¿Borrar este registro? Puede eliminar datos relacionados y no se puede deshacer.'))return;
+	try{await api(`/api/admin/tables/${encodeURIComponent(adminState.table)}`,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:keys})});await loadAdminData();toast('Registro eliminado.')}catch(error){toast(error.message)}
+}
+$('#adminTableSelect').onchange=event=>{adminState.table=event.target.value;$('#adminSearch').value='';loadAdminRecords(true)};
+$('#adminSearch').onkeydown=event=>{if(event.key==='Enter')loadAdminRecords(true)};
+$('#adminReloadBtn').onclick=()=>loadAdminData();
+$('#adminCreateBtn').onclick=()=>openAdminRecord();
+$('#adminRecordForm').onsubmit=saveAdminRecord;
+$('#adminMoreBtn').onclick=()=>{adminState.offset+=50;loadAdminRecords(false)};
 async function init(){state.selectedDuration='q';loadEditorShortcuts();try{await loadMe();await loadProjects();renderInstruments();renderWaveform();renderScore();loadDashboard()}catch(e){toast(e.message)}}
+renderScoreInto = renderScoreIntoContinuous;
 init();

@@ -6,9 +6,22 @@ from contextlib import contextmanager
 from pathlib import Path
 from datetime import datetime, timedelta
 import sqlite3, os, json, csv, io
+import mysql.connector
+from dotenv import load_dotenv
 
 BASE = Path(__file__).resolve().parent
+LANDING = BASE / 'Lyrics_F'
+load_dotenv(BASE / '.env')
+DB_BACKEND = os.environ.get('LYRICS_DB_BACKEND', 'mysql').strip().lower()
 DB = Path(os.environ.get('LYRICS_DATABASE', BASE / 'lyrics.db')).expanduser().resolve()
+MYSQL_CONFIG = {
+    'host': os.environ.get('LYRICS_MYSQL_HOST', '127.0.0.1'),
+    'port': int(os.environ.get('LYRICS_MYSQL_PORT', '3306')),
+    'user': os.environ.get('LYRICS_MYSQL_USER', 'root'),
+    'password': os.environ.get('LYRICS_MYSQL_PASSWORD', ''),
+    'database': os.environ.get('LYRICS_MYSQL_DATABASE', 'lyrics'),
+    'charset': 'utf8mb4',
+}
 UPLOADS = Path(os.environ.get('LYRICS_UPLOADS', BASE / 'uploads')).expanduser().resolve()
 UPLOADS.mkdir(exist_ok=True)
 ASSETS = BASE / 'img'
@@ -166,13 +179,36 @@ ROLE_DATA = [
  ('mixto','Funciones de docente y compositor.')
 ]
 
+ADMIN_TABLES = {
+    'roles': 'Roles',
+    'users': 'Usuarios',
+    'projects': 'Proyectos',
+    'project_users': 'Acceso a proyectos',
+    'resources': 'Recursos',
+    'compositions': 'Composiciones',
+    'score_favorites': 'Partituras favoritas',
+    'scores': 'Partituras',
+    'recordings': 'Grabaciones',
+    'analyses': 'Análisis',
+    'activities': 'Actividades',
+    'evaluations': 'Evaluaciones',
+    'evaluation_results': 'Resultados de evaluaciones',
+    'tracking': 'Seguimiento',
+}
+ADMIN_READ_ONLY_TABLES = {'roles', 'users'}
+
 @contextmanager
 def db():
-    conn = sqlite3.connect(DB)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA foreign_keys=ON')
+    sqlite_backend = DB_BACKEND == 'sqlite'
+    if sqlite_backend:
+        conn = sqlite3.connect(DB)
+        conn.row_factory = sqlite3.Row
+        conn.execute('PRAGMA foreign_keys=ON')
+    else:
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+    adapter = DatabaseConnection(conn, sqlite_backend)
     try:
-        yield conn
+        yield adapter
         conn.commit()
     except Exception:
         conn.rollback()
@@ -180,20 +216,103 @@ def db():
     finally:
         conn.close()
 
+class DatabaseRow(dict):
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return tuple(self.values())[key]
+        return super().__getitem__(key)
+
+class DatabaseCursor:
+    def __init__(self, cursor, sqlite_backend):
+        self.cursor = cursor
+        self.sqlite_backend = sqlite_backend
+
+    @property
+    def lastrowid(self):
+        return self.cursor.lastrowid
+
+    def _row(self, row):
+        return row if row is None or self.sqlite_backend else DatabaseRow(row)
+
+    def fetchone(self):
+        return self._row(self.cursor.fetchone())
+
+    def fetchall(self):
+        return [self._row(row) for row in self.cursor.fetchall()]
+
+    def __iter__(self):
+        return iter(self.fetchall())
+
+class DatabaseConnection:
+    def __init__(self, connection, sqlite_backend):
+        self.connection = connection
+        self.sqlite_backend = sqlite_backend
+
+    def execute(self, sql, args=()):
+        if self.sqlite_backend:
+            cursor = self.connection.execute(sql, args)
+        else:
+            sql = sql.replace('INSERT OR IGNORE INTO', 'INSERT IGNORE INTO').replace('?', '%s')
+            cursor = self.connection.cursor(dictionary=True)
+            cursor.execute(sql, args)
+        return DatabaseCursor(cursor, self.sqlite_backend)
+
+    def executescript(self, script):
+        return self.connection.executescript(script)
+
+    def commit(self):
+        self.connection.commit()
+
+    def rollback(self):
+        self.connection.rollback()
+
+    def close(self):
+        self.connection.close()
+
+DB_INITIALIZED = False
+
 def init_db():
+    global DB_INITIALIZED
     with db() as con:
-        con.executescript(SCHEMA)
-        columns = {row['name'] for row in con.execute('PRAGMA table_info(users)')}
-        if 'biografia' not in columns:
-            con.execute("ALTER TABLE users ADD COLUMN biografia TEXT NOT NULL DEFAULT ''")
-        if 'pais' not in columns:
-            con.execute("ALTER TABLE users ADD COLUMN pais TEXT NOT NULL DEFAULT ''")
-        composition_columns = {row['name'] for row in con.execute('PRAGMA table_info(compositions)')}
-        for column in ('instrumento', 'dificultad', 'genero'):
-            if column not in composition_columns:
-                con.execute(f"ALTER TABLE compositions ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
+        if DB_BACKEND == 'sqlite':
+            con.executescript(SCHEMA)
+            columns = {row['name'] for row in con.execute('PRAGMA table_info(users)')}
+            if 'biografia' not in columns:
+                con.execute("ALTER TABLE users ADD COLUMN biografia TEXT NOT NULL DEFAULT ''")
+            if 'pais' not in columns:
+                con.execute("ALTER TABLE users ADD COLUMN pais TEXT NOT NULL DEFAULT ''")
+            composition_columns = {row['name'] for row in con.execute('PRAGMA table_info(compositions)')}
+            for column in ('instrumento', 'dificultad', 'genero'):
+                if column not in composition_columns:
+                    con.execute(f"ALTER TABLE compositions ADD COLUMN {column} TEXT NOT NULL DEFAULT ''")
+        else:
+            for statement in (BASE / 'schema.sql').read_text(encoding='utf-8').split(';'):
+                if statement.strip():
+                    con.execute(statement)
+            migrations = {
+                'users': {'biografia': "VARCHAR(2000) NOT NULL DEFAULT ''", 'pais': "VARCHAR(100) NOT NULL DEFAULT ''"},
+                'compositions': {
+                    'instrumento': "VARCHAR(80) NOT NULL DEFAULT 'Piano'",
+                    'dificultad': "VARCHAR(40) NOT NULL DEFAULT ''",
+                    'genero': "VARCHAR(80) NOT NULL DEFAULT ''",
+                },
+            }
+            for table, columns in migrations.items():
+                existing = {row['COLUMN_NAME'] for row in con.execute(
+                    'SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?',
+                    (table,),
+                )}
+                for column, definition in columns.items():
+                    if column not in existing:
+                        con.execute(f'ALTER TABLE {table} ADD COLUMN {column} {definition}')
         for name, desc in ROLE_DATA:
             con.execute('INSERT OR IGNORE INTO roles(nombre,descripcion) VALUES (?,?)',(name,desc))
+    DB_INITIALIZED = True
+
+@app.before_request
+def initialize_database():
+    if not DB_INITIALIZED:
+        init_db()
 
 def row_dict(row):
     return dict(row) if row else None
@@ -222,6 +341,57 @@ def roles_required(*roles):
         return wrapped
     return deco
 
+def admin_table_columns(con, table):
+    if table not in ADMIN_TABLES:
+        return None
+    if DB_BACKEND == 'sqlite':
+        schema_row = con.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+            (table,),
+        ).fetchone()
+        auto_increment = 'autoincrement' in str(schema_row['sql'] or '').lower() if schema_row else False
+        rows = con.execute(f'PRAGMA table_info(`{table}`)').fetchall()
+        columns = [{
+            'name': row['name'],
+            'type': str(row['type'] or '').lower(),
+            'primary': bool(row['pk']),
+            'auto': auto_increment and bool(row['pk']),
+            'nullable': not bool(row['notnull']),
+            'default': row['dflt_value'],
+        } for row in rows]
+    else:
+        rows = con.execute(
+            '''SELECT COLUMN_NAME, DATA_TYPE, COLUMN_KEY, EXTRA, IS_NULLABLE, COLUMN_DEFAULT
+               FROM information_schema.COLUMNS
+               WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?
+               ORDER BY ORDINAL_POSITION''',
+            (table,),
+        ).fetchall()
+        columns = [{
+            'name': row['COLUMN_NAME'],
+            'type': str(row['DATA_TYPE']).lower(),
+            'primary': row['COLUMN_KEY'] == 'PRI',
+            'auto': 'auto_increment' in str(row['EXTRA']).lower(),
+            'nullable': row['IS_NULLABLE'] == 'YES',
+            'default': row['COLUMN_DEFAULT'],
+        } for row in rows]
+    if table == 'users':
+        columns = [column for column in columns if column['name'] != 'contrasena_hash']
+    return [{
+        **column,
+        'editable': not column['primary'] and column['name'] != 'contrasena_hash',
+        'searchable': column['type'] in {
+            'text', 'tinytext', 'mediumtext', 'longtext', 'varchar', 'char',
+        },
+    } for column in columns]
+
+def admin_record_filter(columns, key_values):
+    primary = [column['name'] for column in columns if column['primary']]
+    if not primary or not isinstance(key_values, dict) or set(key_values) != set(primary):
+        return None, None
+    where = ' AND '.join(f'`{name}`=?' for name in primary)
+    return where, tuple(key_values[name] for name in primary)
+
 def project_access(con, project_id, user, write=False):
     if user['rol']=='administrador': return True
     row=con.execute('''SELECT p.id_usuario_creador, pu.permiso FROM projects p LEFT JOIN project_users pu ON pu.id_proyecto=p.id_proyecto AND pu.id_usuario=? WHERE p.id_proyecto=?''',(user['id_usuario'],project_id)).fetchone()
@@ -235,7 +405,7 @@ def touch_project(con,pid):
     con.execute('UPDATE projects SET fecha_actualizacion=CURRENT_TIMESTAMP WHERE id_proyecto=?',(pid,))
 
 @app.get('/')
-def home(): return send_from_directory(BASE, 'index.html')
+def home(): return send_from_directory(LANDING, 'index.html')
 
 @app.get('/dashboard')
 def dashboard():
@@ -253,13 +423,14 @@ def dashboard_script():
 def landing_script():
     return send_from_directory(BASE, 'landing.js')
 
+@app.get('/estilos.css')
 @app.get('/estilo.css')
 def landing_styles():
-    return send_from_directory(BASE, 'estilo.css')
+    return send_from_directory(LANDING, 'estilos.css')
 
 @app.get('/img/<path:filename>')
 def image_asset(filename):
-    return send_from_directory(ASSETS, filename)
+    return send_from_directory(LANDING / 'img', filename)
 
 @app.get('/api/me')
 def me():
@@ -274,7 +445,7 @@ def register():
         role=con.execute("SELECT id_rol FROM roles WHERE nombre='compositor'").fetchone()
         try:
             cur=con.execute('INSERT INTO users(nombre,correo,contrasena_hash,id_rol) VALUES(?,?,?,?)',(name,email,generate_password_hash(password),role['id_rol']))
-        except sqlite3.IntegrityError: return jsonify(ok=False,message='Ya existe una cuenta con ese correo.'),409
+        except (sqlite3.IntegrityError, mysql.connector.IntegrityError): return jsonify(ok=False,message='Ya existe una cuenta con ese correo.'),409
         uid=cur.lastrowid
     session.permanent=True; session['user_id']=uid
     return jsonify(ok=True,message='Cuenta creada correctamente.',user=current_user())
@@ -311,6 +482,210 @@ def roles():
     with db() as con: rows=[dict(x) for x in con.execute('SELECT * FROM roles ORDER BY id_rol')]
     return jsonify(ok=True,roles=rows)
 
+def active_admin_count(con):
+    return con.execute(
+        "SELECT COUNT(*) FROM users u JOIN roles r ON r.id_rol=u.id_rol WHERE r.nombre='administrador' AND u.estado='activo'"
+    ).fetchone()[0]
+
+def admin_user_values(con, data, columns, creating=False):
+    if not isinstance(data, dict):
+        return None, 'Los datos enviados no son válidos.'
+    by_name = {column['name']: column for column in columns}
+    writable = {
+        name: column for name, column in by_name.items()
+        if (
+            (not column['auto'] and name != 'contrasena_hash')
+            if creating else column['editable'] and not column['primary']
+        )
+    }
+    if set(data) - set(writable):
+        return None, 'El registro contiene campos no permitidos.'
+    values = {}
+    for name, value in data.items():
+        column = writable[name]
+        if value is None or value == '':
+            if not column['nullable'] and column['default'] is None:
+                return None, f'El campo {name} es obligatorio.'
+            values[name] = None if value is None else ''
+            continue
+        try:
+            if column['type'] in {'int', 'integer', 'tinyint', 'smallint', 'mediumint', 'bigint'}:
+                values[name] = int(value)
+            elif column['type'] in {'float', 'double', 'real', 'decimal', 'numeric'}:
+                values[name] = float(value)
+            elif column['type'] in {'json'}:
+                json.loads(value) if isinstance(value, str) else None
+                values[name] = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+            else:
+                values[name] = value
+        except (ValueError, TypeError, json.JSONDecodeError):
+            return None, f'El valor del campo {name} no tiene un formato válido.'
+    return values, None
+
+@app.get('/api/admin/tables')
+@roles_required('administrador')
+def admin_tables():
+    with db() as con:
+        tables = []
+        for name, label in ADMIN_TABLES.items():
+            count = con.execute(f'SELECT COUNT(*) FROM `{name}`').fetchone()[0]
+            tables.append({'name': name, 'label': label, 'count': count})
+    return jsonify(ok=True, tables=tables)
+
+@app.get('/api/admin/tables/<table>')
+@roles_required('administrador')
+def admin_table_records(table):
+    if table not in ADMIN_TABLES:
+        return jsonify(ok=False, message='Tabla no disponible.'), 404
+    try:
+        limit = min(100, max(1, int(request.args.get('limit', 50))))
+        offset = min(100000, max(0, int(request.args.get('offset', 0))))
+    except ValueError:
+        return jsonify(ok=False, message='La paginación no es válida.'), 400
+    search = request.args.get('q', '').strip()[:100]
+    with db() as con:
+        columns = admin_table_columns(con, table)
+        if not columns:
+            return jsonify(ok=False, message='La tabla no está disponible.'), 404
+        primary = [column['name'] for column in columns if column['primary']]
+        if not primary:
+            return jsonify(ok=False, message='La tabla no tiene una clave primaria segura para administrarla.'), 400
+        searchable = [column['name'] for column in columns if column['searchable']]
+        where = ''
+        args = []
+        if search and searchable:
+            cast_type = 'CHAR' if DB_BACKEND != 'sqlite' else 'TEXT'
+            where = ' WHERE ' + ' OR '.join(f'CAST(`{name}` AS {cast_type}) LIKE ?' for name in searchable)
+            args.extend([f'%{search}%'] * len(searchable))
+        total = con.execute(f'SELECT COUNT(*) FROM `{table}`{where}', tuple(args)).fetchone()[0]
+        order = ', '.join(f'`{name}`' for name in primary)
+        safe_columns = ', '.join(f'`{column["name"]}`' for column in columns)
+        rows = con.execute(
+            f'SELECT {safe_columns} FROM `{table}`{where} ORDER BY {order} LIMIT ? OFFSET ?',
+            tuple(args + [limit, offset]),
+        ).fetchall()
+    safe_rows = []
+    for row in rows:
+        safe_rows.append({column['name']: row[column['name']] for column in columns})
+    return jsonify(
+        ok=True, table=table, label=ADMIN_TABLES[table], columns=columns,
+        rows=safe_rows, total=total, limit=limit, offset=offset,
+        read_only=table in ADMIN_READ_ONLY_TABLES,
+    )
+
+@app.post('/api/admin/tables/<table>')
+@roles_required('administrador')
+def admin_create_record(table):
+    if table not in ADMIN_TABLES or table in ADMIN_READ_ONLY_TABLES:
+        return jsonify(ok=False, message='No se permite crear registros en esta tabla.'), 403
+    with db() as con:
+        columns = admin_table_columns(con, table)
+        values, error = admin_user_values(con, payload(), columns, creating=True)
+        if error:
+            return jsonify(ok=False, message=error), 400
+        if not values:
+            return jsonify(ok=False, message='Indica los campos requeridos para crear el registro.'), 400
+        names = list(values)
+        placeholders = ','.join('?' for _ in names)
+        sql = f'INSERT INTO `{table}` ({",".join(f"`{name}`" for name in names)}) VALUES ({placeholders})'
+        try:
+            cursor = con.execute(sql, tuple(values[name] for name in names))
+        except (sqlite3.IntegrityError, mysql.connector.IntegrityError) as error:
+            return jsonify(ok=False, message=f'No se pudo crear el registro por una restricción de datos: {error.msg if hasattr(error, "msg") else error}'), 400
+        record_id = cursor.lastrowid
+    return jsonify(ok=True, id=record_id)
+
+@app.put('/api/admin/tables/<table>')
+@roles_required('administrador')
+def admin_update_record(table):
+    if table not in ADMIN_TABLES or table in ADMIN_READ_ONLY_TABLES:
+        return jsonify(ok=False, message='No se permite editar esta tabla directamente.'), 403
+    data = payload()
+    with db() as con:
+        columns = admin_table_columns(con, table)
+        where, keys = admin_record_filter(columns, data.get('key'))
+        if where is None:
+            return jsonify(ok=False, message='La clave del registro no es válida.'), 400
+        values, error = admin_user_values(con, data.get('values'), columns)
+        if error:
+            return jsonify(ok=False, message=error), 400
+        if not values:
+            return jsonify(ok=False, message='No hay cambios para guardar.'), 400
+        assignments = ', '.join(f'`{name}`=?' for name in values)
+        try:
+            cursor = con.execute(
+                f'UPDATE `{table}` SET {assignments} WHERE {where}',
+                tuple(values.values()) + keys,
+            )
+        except (sqlite3.IntegrityError, mysql.connector.IntegrityError) as error:
+            return jsonify(ok=False, message=f'No se pudo guardar por una restricción de datos: {error.msg if hasattr(error, "msg") else error}'), 400
+        if cursor.cursor.rowcount == 0:
+            exists = con.execute(f'SELECT 1 FROM `{table}` WHERE {where}', keys).fetchone()
+            if not exists:
+                return jsonify(ok=False, message='El registro ya no existe.'), 404
+    return jsonify(ok=True)
+
+@app.delete('/api/admin/tables/<table>')
+@roles_required('administrador')
+def admin_delete_record(table):
+    if table not in ADMIN_TABLES or table in ADMIN_READ_ONLY_TABLES:
+        return jsonify(ok=False, message='No se permite borrar registros de esta tabla.'), 403
+    data = payload()
+    with db() as con:
+        columns = admin_table_columns(con, table)
+        where, keys = admin_record_filter(columns, data.get('key'))
+        if where is None:
+            return jsonify(ok=False, message='La clave del registro no es válida.'), 400
+        try:
+            cursor = con.execute(f'DELETE FROM `{table}` WHERE {where}', keys)
+        except (sqlite3.IntegrityError, mysql.connector.IntegrityError) as error:
+            return jsonify(ok=False, message=f'No se pudo borrar por relaciones con otros registros: {error.msg if hasattr(error, "msg") else error}'), 409
+        if cursor.cursor.rowcount == 0:
+            return jsonify(ok=False, message='El registro ya no existe.'), 404
+    return jsonify(ok=True)
+
+@app.get('/api/admin/users')
+@roles_required('administrador')
+def admin_user_list():
+    search = request.args.get('q', '').strip()[:100]
+    pattern = f'%{search}%'
+    with db() as con:
+        users = con.execute(
+            '''SELECT u.id_usuario,u.nombre,u.correo,u.estado,u.fecha_creacion,
+                      r.nombre rol,r.id_rol
+               FROM users u JOIN roles r ON r.id_rol=u.id_rol
+               WHERE ?='' OR u.nombre LIKE ? OR u.correo LIKE ? OR r.nombre LIKE ?
+               ORDER BY u.id_usuario DESC LIMIT 100''',
+            (search, pattern, pattern, pattern),
+        ).fetchall()
+        roles = con.execute('SELECT id_rol,nombre,descripcion FROM roles ORDER BY id_rol').fetchall()
+    return jsonify(ok=True, users=[dict(row) for row in users], roles=[dict(row) for row in roles])
+
+@app.post('/api/admin/users')
+@roles_required('administrador')
+def admin_create_user():
+    data = payload()
+    name = str(data.get('nombre', '')).strip()
+    email = str(data.get('correo', '')).strip().lower()
+    password = str(data.get('password', ''))
+    try:
+        role_id = int(data.get('id_rol', 0))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, message='El rol indicado no es válido.'), 400
+    if len(name) < 2 or len(name) > 160 or '@' not in email or len(email) > 255 or len(password) < 8:
+        return jsonify(ok=False, message='Revisa el nombre, correo y contraseña (mínimo 8 caracteres).'), 400
+    with db() as con:
+        if not con.execute('SELECT 1 FROM roles WHERE id_rol=?', (role_id,)).fetchone():
+            return jsonify(ok=False, message='El rol indicado no existe.'), 400
+        try:
+            cursor = con.execute(
+                'INSERT INTO users(nombre,correo,contrasena_hash,id_rol) VALUES(?,?,?,?)',
+                (name, email, generate_password_hash(password), role_id),
+            )
+        except (sqlite3.IntegrityError, mysql.connector.IntegrityError):
+            return jsonify(ok=False, message='Ya existe una cuenta con ese correo.'), 409
+    return jsonify(ok=True, id_usuario=cursor.lastrowid)
+
 @app.get('/api/users')
 @roles_required('administrador')
 def users():
@@ -320,10 +695,39 @@ def users():
 @app.put('/api/users/<int:uid>/role')
 @roles_required('administrador')
 def change_role(uid):
-    d=payload(); rid=int(d.get('id_rol',0))
+    d=payload()
+    try:
+        rid=int(d.get('id_rol',0))
+    except (TypeError,ValueError):
+        return jsonify(ok=False,message='Rol inválido.'),400
     with db() as con:
         if not con.execute('SELECT 1 FROM roles WHERE id_rol=?',(rid,)).fetchone(): return jsonify(ok=False,message='Rol inexistente.'),400
+        target=con.execute('SELECT id_rol,estado FROM users WHERE id_usuario=?',(uid,)).fetchone()
+        if not target: return jsonify(ok=False,message='Usuario inexistente.'),404
+        target_role=con.execute('SELECT nombre FROM roles WHERE id_rol=?',(target['id_rol'],)).fetchone()
+        next_role=con.execute('SELECT nombre FROM roles WHERE id_rol=?',(rid,)).fetchone()
+        if target_role['nombre']=='administrador' and next_role['nombre']!='administrador' and target['estado']=='activo' and active_admin_count(con)<=1:
+            return jsonify(ok=False,message='No puedes quitar el último administrador activo.'),409
         con.execute('UPDATE users SET id_rol=? WHERE id_usuario=?',(rid,uid))
+    return jsonify(ok=True)
+
+@app.delete('/api/users/<int:uid>')
+@roles_required('administrador')
+def delete_user(uid):
+    administrator=current_user()
+    if administrator['id_usuario']==uid:
+        return jsonify(ok=False,message='No puedes eliminar tu propia cuenta administradora desde aquí.'),409
+    with db() as con:
+        target=con.execute(
+            '''SELECT u.id_usuario,u.estado,r.nombre rol FROM users u
+               JOIN roles r ON r.id_rol=u.id_rol WHERE u.id_usuario=?''',
+            (uid,),
+        ).fetchone()
+        if not target:
+            return jsonify(ok=False,message='Usuario inexistente.'),404
+        if target['rol']=='administrador' and target['estado']=='activo' and active_admin_count(con)<=1:
+            return jsonify(ok=False,message='No puedes eliminar el último administrador activo.'),409
+        con.execute('DELETE FROM users WHERE id_usuario=?',(uid,))
     return jsonify(ok=True)
 
 @app.get('/api/projects')
@@ -373,7 +777,10 @@ def share_project(pid):
         if not project_access(con,pid,u,True): return jsonify(ok=False,message='Sin permiso.'),403
         target=con.execute('SELECT id_usuario FROM users WHERE correo=?',(email,)).fetchone()
         if not target: return jsonify(ok=False,message='No existe un usuario con ese correo.'),404
-        con.execute('INSERT OR REPLACE INTO project_users(id_proyecto,id_usuario,permiso) VALUES(?,?,?)',(pid,target['id_usuario'],perm))
+        membership_sql = 'INSERT OR REPLACE INTO project_users(id_proyecto,id_usuario,permiso) VALUES(?,?,?)'
+        if DB_BACKEND != 'sqlite':
+            membership_sql = 'INSERT INTO project_users(id_proyecto,id_usuario,permiso) VALUES(?,?,?) ON DUPLICATE KEY UPDATE permiso=VALUES(permiso)'
+        con.execute(membership_sql,(pid,target['id_usuario'],perm))
     return jsonify(ok=True)
 
 @app.get('/api/projects/<int:pid>/detail')
@@ -576,7 +983,10 @@ def submit_result(eid):
     except ValueError: return jsonify(ok=False,message='Calificación inválida.'),400
     with db() as con:
         if not con.execute('SELECT 1 FROM evaluations WHERE id_evaluacion=?',(eid,)).fetchone(): return jsonify(ok=False,message='Evaluación inexistente.'),404
-        con.execute('''INSERT INTO evaluation_results(calificacion,observaciones,id_evaluacion,id_usuario) VALUES(?,?,?,?) ON CONFLICT(id_evaluacion,id_usuario) DO UPDATE SET calificacion=excluded.calificacion,observaciones=excluded.observaciones,fecha=CURRENT_TIMESTAMP''',(grade,str(d.get('observaciones','')),eid,u['id_usuario']))
+        result_sql = '''INSERT INTO evaluation_results(calificacion,observaciones,id_evaluacion,id_usuario) VALUES(?,?,?,?) ON CONFLICT(id_evaluacion,id_usuario) DO UPDATE SET calificacion=excluded.calificacion,observaciones=excluded.observaciones,fecha=CURRENT_TIMESTAMP'''
+        if DB_BACKEND != 'sqlite':
+            result_sql = '''INSERT INTO evaluation_results(calificacion,observaciones,id_evaluacion,id_usuario) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE calificacion=VALUES(calificacion),observaciones=VALUES(observaciones),fecha=CURRENT_TIMESTAMP'''
+        con.execute(result_sql,(grade,str(d.get('observaciones','')),eid,u['id_usuario']))
     return jsonify(ok=True)
 
 @app.get('/api/evaluations')
@@ -635,6 +1045,5 @@ def uploaded(filename):
 @app.get('/api/health')
 def health(): return jsonify(ok=True,app='Lyrics',status='running')
 
-init_db()
 if __name__ == '__main__':
     app.run(host='127.0.0.1',port=5000,debug=True)
