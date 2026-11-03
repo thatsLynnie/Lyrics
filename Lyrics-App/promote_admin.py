@@ -1,5 +1,3 @@
-import getpass
-
 import app
 
 
@@ -21,11 +19,6 @@ def main():
         ).fetchone()
         if not role:
             raise SystemExit('No existe el rol administrador en la base de datos.')
-
-        print(f'La cuenta seleccionada es: {user["nombre"]} ({email})')
-        confirmation = getpass.getpass('Escribe ADMINISTRAR para confirmar: ')
-        if confirmation != 'ADMINISTRAR':
-            raise SystemExit('No se cambió ningún rol.')
 
         connection.execute(
             'UPDATE users SET id_rol=? WHERE id_usuario=?',
