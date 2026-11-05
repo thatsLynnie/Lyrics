@@ -139,3 +139,19 @@ CREATE TABLE IF NOT EXISTS tracking (
   FOREIGN KEY (id_proyecto) REFERENCES projects(id_proyecto) ON DELETE CASCADE,
   FOREIGN KEY (id_usuario) REFERENCES users(id_usuario) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS ai_conversations (
+  id_conversacion INT AUTO_INCREMENT PRIMARY KEY,
+  titulo VARCHAR(100) NOT NULL DEFAULT 'Nueva conversación',
+  fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_actualizacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id_usuario INT NOT NULL,
+  FOREIGN KEY (id_usuario) REFERENCES users(id_usuario) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS ai_messages (
+  id_mensaje INT AUTO_INCREMENT PRIMARY KEY,
+  rol VARCHAR(16) NOT NULL,
+  contenido LONGTEXT NOT NULL,
+  fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id_conversacion INT NOT NULL,
+  FOREIGN KEY (id_conversacion) REFERENCES ai_conversations(id_conversacion) ON DELETE CASCADE
+);

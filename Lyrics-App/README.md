@@ -34,6 +34,12 @@ MySQL is the default backend. SQLite is retained only for the automated test sui
 
 The registration form asks for one username, an email and a password. On successful registration the app creates the session and opens the Dashboard, where the profile is populated from the account stored in MySQL.
 
+## Musical AI assistant
+
+The **IA Musical** workspace is available to every signed-in role and stores text conversations privately per account in the application database. It can use OpenAI or Google Gemini; add `OPENAI_API_KEY` and/or `GEMINI_API_KEY` to the private `.env` file on the server. Optionally configure `OPENAI_MODEL` (default: `gpt-4o-mini`), `GEMINI_MODEL` (default: `gemini-3.8-flash`), `LYRICS_AI_ASSISTANT_NAME` and `LYRICS_AI_DAILY_LIMIT` (default: 40 completed responses per user in 24 hours). The selector also offers an offline local helper. If a selected online provider fails, Lyrics tries the other configured provider, then uses the local helper. That helper provides deterministic guidance for common music topics such as scales, chords, rhythm and composition; it is not a generative AI model and labels its responses accordingly. Both API keys stay on the Flask server and must never be added to browser code or committed. Messages sent to online providers are processed by those providers, so do not include personal student information.
+
+The workspace includes searchable conversation history, copyable formatted answers, keyboard shortcuts, a responsive layout, an optional welcome arpeggio, browser-based speech dictation, and optional spoken answers. Dictation is handled by the browser's speech-recognition service; only the recognized text is sent to the selected provider when the user explicitly submits it. Voice support depends on the browser and its microphone permissions. This first phase supports musical explanations and text drafts of educational and composition ideas. It does not yet accept or analyze score files, perform OMR, validate music automatically, render or play generated notation, or export AI resources. Drafts should be reviewed by the user. The SQLite and MySQL schemas create private conversation storage automatically.
+
 ## Database administration
 
 The in-app **Administración** section is shown only to users with the administrator role. It can search and page through records, and create, edit or delete records in the application data tables. User accounts have a separate management view for creating accounts, assigning roles and deleting accounts. Password hashes are never returned or displayed, and roles can only be assigned from the built-in role list. Deleting users or parent records can cascade to related data.
@@ -48,7 +54,7 @@ phpMyAdmin remains available for full database-level maintenance. Select the `ly
 python -m unittest discover -s tests -v
 ```
 
-The tests use a temporary SQLite database and cover route delivery, registration, profile persistence, score persistence, library favorites and project access isolation. The application runtime uses MySQL.
+The tests use a temporary SQLite database and cover route delivery, registration, profile persistence, score persistence, library favorites, project access isolation, and authenticated AI conversations across roles. The application runtime uses MySQL.
 
 ## Implemented behavior
 
@@ -63,6 +69,7 @@ The tests use a temporary SQLite database and cover route delivery, registration
 - Adding detected or manually entered notes to a composition score.
 - A score library drawn from accessible project compositions with search, metadata filters and user favorites.
 - Persistent profile name, biography and country.
+- Musical assistant for every signed-in role, with OpenAI-backed text conversations, per-user history, browser voice controls, and server-side API-key handling.
 
 ## Known limitations
 
@@ -70,6 +77,7 @@ The tests use a temporary SQLite database and cover route delivery, registration
 - Pitch estimation is a basic autocorrelation estimate for monophonic input; it is not polyphonic transcription and should not be treated as a complete audio-to-score system.
 - The score editor supports a single treble staff and basic notation. Professional engraving, multiple independent parts/voices and advanced score layout are not implemented.
 - Instrument selection does not provide instrument-specific sound. Educational lesson/progress workflows and PDF/MIDI/MusicXML interoperability still need broader compatibility validation.
+- The musical AI is currently text-only. OMR, score generation and validation, audio playback, and export are not integrated.
 - Audio input-device selection and capture settings depend on browser capabilities and are not yet fully wired to the recording stream.
 - VexFlow is loaded from jsDelivr, so score notation needs a network connection.
 

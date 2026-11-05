@@ -12,6 +12,16 @@ from dotenv import load_dotenv
 BASE = Path(__file__).resolve().parent
 LANDING = BASE / 'Lyrics_F'
 load_dotenv(BASE / '.env')
+from ai_service import (
+    AssistantServiceError,
+    assistant_name,
+    available_providers,
+    daily_limit,
+    generate_reply_with_fallback,
+    is_configured,
+    provider_settings,
+)
+
 DB_BACKEND = os.environ.get('LYRICS_DB_BACKEND', 'mysql').strip().lower()
 DB = Path(os.environ.get('LYRICS_DATABASE', BASE / 'lyrics.db')).expanduser().resolve()
 MYSQL_CONFIG = {
@@ -170,6 +180,22 @@ CREATE TABLE IF NOT EXISTS tracking (
   FOREIGN KEY (id_proyecto) REFERENCES projects(id_proyecto) ON DELETE CASCADE,
   FOREIGN KEY (id_usuario) REFERENCES users(id_usuario) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS ai_conversations (
+  id_conversacion INTEGER PRIMARY KEY AUTOINCREMENT,
+  titulo TEXT NOT NULL DEFAULT 'Nueva conversación',
+  fecha_creacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  fecha_actualizacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id_usuario INTEGER NOT NULL,
+  FOREIGN KEY (id_usuario) REFERENCES users(id_usuario) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS ai_messages (
+  id_mensaje INTEGER PRIMARY KEY AUTOINCREMENT,
+  rol TEXT NOT NULL,
+  contenido TEXT NOT NULL,
+  fecha_creacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  id_conversacion INTEGER NOT NULL,
+  FOREIGN KEY (id_conversacion) REFERENCES ai_conversations(id_conversacion) ON DELETE CASCADE
+);
 '''
 
 ROLE_DATA = [
@@ -230,6 +256,10 @@ class DatabaseCursor:
     @property
     def lastrowid(self):
         return self.cursor.lastrowid
+
+    @property
+    def rowcount(self):
+        return self.cursor.rowcount
 
     def _row(self, row):
         return row if row is None or self.sqlite_backend else DatabaseRow(row)
@@ -419,6 +449,14 @@ def dashboard_styles():
 def dashboard_script():
     return send_from_directory(BASE, 'dashboard.js')
 
+@app.get('/ai.css')
+def ai_styles():
+    return send_from_directory(BASE, 'ai.css')
+
+@app.get('/ai.js')
+def ai_script():
+    return send_from_directory(BASE, 'ai.js')
+
 @app.get('/landing.js')
 def landing_script():
     return send_from_directory(BASE, 'landing.js')
@@ -465,6 +503,160 @@ def logout(): session.clear(); return jsonify(ok=True)
 @app.get('/api/profile')
 @login_required
 def profile(): return jsonify(ok=True,user=current_user())
+
+@app.get('/api/ai/config')
+@login_required
+def ai_config():
+    providers=available_providers()
+    default_provider=providers[0]['id'] if providers else 'openai'
+    return jsonify(
+        ok=True,
+        assistant_name=assistant_name(),
+        configured=bool(providers),
+        providers=providers,
+        default_provider=default_provider,
+        model=provider_settings(default_provider)['model'],
+    )
+
+@app.get('/api/ai/conversations')
+@login_required
+def ai_conversations():
+    user=current_user()
+    with db() as con:
+        rows=con.execute(
+            '''SELECT id_conversacion,titulo,fecha_creacion,fecha_actualizacion
+               FROM ai_conversations WHERE id_usuario=?
+               ORDER BY fecha_actualizacion DESC,id_conversacion DESC''',
+            (user['id_usuario'],),
+        ).fetchall()
+    return jsonify(ok=True,conversations=[dict(row) for row in rows])
+
+@app.post('/api/ai/conversations')
+@login_required
+def create_ai_conversation():
+    user=current_user(); data=payload()
+    title=str(data.get('titulo','Nueva conversación')).strip()[:100] or 'Nueva conversación'
+    with db() as con:
+        cur=con.execute(
+            'INSERT INTO ai_conversations(titulo,id_usuario) VALUES(?,?)',
+            (title,user['id_usuario']),
+        )
+    return jsonify(ok=True,id_conversacion=cur.lastrowid,titulo=title)
+
+@app.get('/api/ai/conversations/<int:conversation_id>')
+@login_required
+def ai_conversation(conversation_id):
+    user=current_user()
+    with db() as con:
+        conversation=con.execute(
+            'SELECT id_conversacion,titulo,fecha_creacion,fecha_actualizacion FROM ai_conversations WHERE id_conversacion=? AND id_usuario=?',
+            (conversation_id,user['id_usuario']),
+        ).fetchone()
+        if not conversation:
+            return jsonify(ok=False,message='Conversación no encontrada.'),404
+        messages=con.execute(
+            'SELECT id_mensaje,rol,contenido,fecha_creacion FROM ai_messages WHERE id_conversacion=? ORDER BY id_mensaje',
+            (conversation_id,),
+        ).fetchall()
+    return jsonify(ok=True,conversation=dict(conversation),messages=[dict(row) for row in messages])
+
+@app.post('/api/ai/conversations/<int:conversation_id>/messages')
+@login_required
+def send_ai_message(conversation_id):
+    user=current_user(); data=payload(); content=data.get('contenido')
+    provider=data.get('provider','openai')
+    if not isinstance(provider,str):
+        return jsonify(ok=False,message='El proveedor de IA seleccionado no es válido.'),400
+    try:
+        selected_provider=provider_settings(provider)
+    except AssistantServiceError as error:
+        return jsonify(ok=False,message=str(error)),error.status_code
+    if not isinstance(content,str) or not content.strip():
+        return jsonify(ok=False,message='Escribe un mensaje para el asistente.'),400
+    content=content.strip()
+    if len(content)>4000:
+        return jsonify(ok=False,message='El mensaje no puede superar los 4.000 caracteres.'),400
+    with db() as con:
+        conversation=con.execute(
+            'SELECT id_conversacion FROM ai_conversations WHERE id_conversacion=? AND id_usuario=?',
+            (conversation_id,user['id_usuario']),
+        ).fetchone()
+        if not conversation:
+            return jsonify(ok=False,message='Conversación no encontrada.'),404
+        if not is_configured(provider):
+            return jsonify(ok=False,message=f"{selected_provider['name']} no está configurado. Añade la clave correspondiente al archivo .env del servidor."),503
+        try:
+            response_limit=daily_limit()
+        except AssistantServiceError as error:
+            return jsonify(ok=False,message=str(error)),error.status_code
+        cutoff="datetime('now','-1 day')" if DB_BACKEND=='sqlite' else 'DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 1 DAY)'
+        responses=con.execute(
+            f'''SELECT COUNT(*) FROM ai_messages m
+               JOIN ai_conversations c ON c.id_conversacion=m.id_conversacion
+               WHERE c.id_usuario=? AND m.rol='assistant' AND m.fecha_creacion>={cutoff}''',
+            (user['id_usuario'],),
+        ).fetchone()[0]
+        if responses>=response_limit:
+            return jsonify(ok=False,message=f'Has alcanzado el límite de {response_limit} respuestas cada 24 horas.'),429
+        prior=con.execute(
+            'SELECT rol,contenido FROM ai_messages WHERE id_conversacion=? ORDER BY id_mensaje DESC LIMIT 20',
+            (conversation_id,),
+        ).fetchall()
+    history=[{'role':row['rol'],'content':row['contenido']} for row in reversed(prior)]
+    history.append({'role':'user','content':content})
+
+    try:
+        answer,provider_used,fallback_notice=generate_reply_with_fallback(history,provider=provider)
+    except AssistantServiceError as error:
+        return jsonify(ok=False,message=str(error)),error.status_code
+
+    title=content[:97].rstrip()
+    if len(content)>97:
+        title+='...'
+    with db() as con:
+        conversation=con.execute(
+            'SELECT titulo FROM ai_conversations WHERE id_conversacion=? AND id_usuario=?',
+            (conversation_id,user['id_usuario']),
+        ).fetchone()
+        if not conversation:
+            return jsonify(ok=False,message='La conversación ya no está disponible.'),404
+        con.execute(
+            'INSERT INTO ai_messages(rol,contenido,id_conversacion) VALUES(?,?,?)',
+            ('user',content,conversation_id),
+        )
+        con.execute(
+            'INSERT INTO ai_messages(rol,contenido,id_conversacion) VALUES(?,?,?)',
+            ('assistant',answer,conversation_id),
+        )
+        if conversation['titulo']=='Nueva conversación':
+            con.execute(
+                'UPDATE ai_conversations SET titulo=?,fecha_actualizacion=CURRENT_TIMESTAMP WHERE id_conversacion=? AND id_usuario=?',
+                (title,conversation_id,user['id_usuario']),
+            )
+        else:
+            con.execute(
+                'UPDATE ai_conversations SET fecha_actualizacion=CURRENT_TIMESTAMP WHERE id_conversacion=? AND id_usuario=?',
+                (conversation_id,user['id_usuario']),
+            )
+    return jsonify(
+        ok=True,
+        reply=answer,
+        provider_used=provider_used,
+        fallback_notice=fallback_notice,
+    )
+
+@app.delete('/api/ai/conversations/<int:conversation_id>')
+@login_required
+def delete_ai_conversation(conversation_id):
+    user=current_user()
+    with db() as con:
+        cursor=con.execute(
+            'DELETE FROM ai_conversations WHERE id_conversacion=? AND id_usuario=?',
+            (conversation_id,user['id_usuario']),
+        )
+        if cursor.rowcount==0:
+            return jsonify(ok=False,message='Conversación no encontrada.'),404
+    return jsonify(ok=True)
 
 @app.put('/api/profile')
 @login_required

@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Alan+Sans:wght@300..900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="dashboard.css">
+<link rel="stylesheet" href="ai.css">
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.3/build/cjs/vexflow.min.js"></script>
 </head>
 <body>
@@ -23,6 +24,7 @@
       <button class="nav-item" data-view="editor"><span>♬</span>Editor de Partituras</button>
       <button class="nav-item" data-view="recording"><span>♩</span>Grabación</button>
       <button class="nav-item" data-view="education"><span>▣</span>Módulo Educativo</button>
+      <button class="nav-item" data-view="ai" id="aiNav"><span>✦</span>IA Musical</button>
       <button class="nav-item" data-view="library"><span>▤</span>Biblioteca</button>
       <button class="nav-item" data-view="profile"><span>◉</span>Configuración</button>
       <button class="nav-item" data-view="admin" id="adminNav" hidden><span>⚙</span>Administración</button>
@@ -67,24 +69,33 @@
       <div class="editor-shell">
         <header class="editor-header">
           <button class="editor-brand" data-view-target="dashboard"><span class="editor-clef">𝄞</span><span><b>LYRICS</b><small>CREA · ORGANIZA · ANALIZA · EXPRESA</small></span></button>
-          <div class="editor-file"><div><strong id="editorProjectName">Sin título</strong><button id="renameProjectBtn">✎</button><select id="scoreComposition" aria-label="Composición activa"><option value="">Sin composiciones</option></select><button id="addCompositionBtn" title="Nueva composición">＋</button></div><small>Guardado por última vez: <span id="saveStatus">Sin cambios</span></small></div>
+          <div class="editor-file">
+            <div class="editor-project-row"><strong id="editorProjectName">Sin proyecto</strong><button id="renameProjectBtn" aria-label="Añadir título y datos de la obra" title="Añadir título y datos de la obra">✎</button></div>
+            <div class="editor-composition-row"><label for="scoreComposition">Composición</label><select id="scoreComposition" aria-label="Composición activa"><option value="">Sin composiciones</option></select><button id="addCompositionBtn" type="button" aria-label="Nueva composición" title="Nueva composición">＋</button></div>
+            <small>Guardado por última vez: <span id="saveStatus">Sin cambios</span></small>
+          </div>
                   <div class="editor-head-actions"><button class="icon-button" id="editorHelpBtn" title="Atajos de teclado">?</button><button class="icon-button" id="editorSettingsBtn" title="Ajustes">⚙</button><button class="icon-button" id="editorMoreBtn" title="Propiedades de la partitura">⋮</button><button class="save-hub-button" id="openSavePanelBtn" title="Guardar, exportar o imprimir"><span>▣ Guardar</span><small>Partitura</small></button></div>
         </header>
         <div class="score-toolbar" aria-label="Acciones principales de edición">
-          <button data-note="w" title="Seleccionar redonda (1)">○ <span>Redonda</span></button><button data-note="h" title="Seleccionar blanca (2)">♩ <span>Blanca</span></button><button class="selected" data-note="q" title="Seleccionar negra (3)">♩ <span>Negra</span></button><button data-note="8" title="Seleccionar corchea (4)">♪ <span>Corchea</span></button><button data-note="16" title="Seleccionar semicorchea (5)">♫ <span>Semicorchea</span></button>
-          <button data-score-action="sharp" title="Sostenido">♯</button><button data-score-action="flat" title="Bemol">♭</button><button data-score-action="natural" title="Becuadro">♮</button><button id="autoBeamBtn" class="active" aria-pressed="true" title="Unir figuras cortas automáticamente">♫ <span>Unir auto.</span></button><button data-tuplet="3" title="Crear tresillo con la figura seleccionada o las notas elegidas">3:2 <span>Tresillo</span></button><button data-tuplet="6" title="Crear seisillo con la figura seleccionada o las notas elegidas">6:4 <span>Seisillo</span></button>
-          <button data-score-action="rest" title="Insertar silencio fijo">𝄽</button><button data-score-action="tie" title="Ligadura">⌒</button><button data-score-action="dot" title="Puntillo">•</button><button data-score-action="crescendo" title="Crescendo: selecciona inicio y fin con Ctrl/Cmd + clic">◁ <span>Cresc.</span></button><button data-score-action="diminuendo" title="Diminuendo: selecciona inicio y fin con Ctrl/Cmd + clic">▷ <span>Dim.</span></button>
-          <button id="beamSelectionBtn" title="Unir o separar las figuras seleccionadas">⟍ <span>Unir selección</span></button><button id="editorUndo" title="Deshacer (Ctrl/Cmd+Z)">↶</button><button id="editorRedo" title="Rehacer (Ctrl/Cmd+Y)">↷</button><button id="clearEditorBtn" title="Borrar selección">⌫</button><button id="moreTools" title="Ver y personalizar atajos">Atajos</button>
+          <div class="score-toolbar-group" role="group" aria-label="Duración de nota"><button data-note="w" title="Seleccionar redonda (1)">○ <span>Redonda</span></button><button data-note="h" title="Seleccionar blanca (2)">♩ <span>Blanca</span></button><button class="selected" data-note="q" title="Seleccionar negra (3)">♩ <span>Negra</span></button><button data-note="8" title="Seleccionar corchea (4)">♪ <span>Corchea</span></button><button data-note="16" title="Seleccionar semicorchea (5)">♫ <span>Semicorchea</span></button></div>
+          <div class="score-toolbar-group score-history-tools" role="group" aria-label="Historial"><button id="editorUndo" title="Deshacer (Ctrl/Cmd+Z)" aria-label="Deshacer">↶</button><button id="editorRedo" title="Rehacer (Ctrl/Cmd+Y)" aria-label="Rehacer">↷</button><button id="clearEditorBtn" title="Borrar selección" aria-label="Borrar selección">⌫</button></div>
         </div>
         <div hidden aria-hidden="true"><select id="scoreProject"></select></div>
         <div class="editor-body">
           <aside class="note-palette">
-            <div class="palette-group"><h4>SÍMBOLOS</h4><button data-score-action="fermata">∞ <span>Calderón</span></button><button data-score-action="repeat">↻ <span>Repetición</span></button></div>
-            <div class="palette-group"><h4>DINÁMICAS</h4><button data-score-action="dynamic-mf"><em>mf</em><span>Medio fuerte</span></button><button data-score-action="dynamic-f"><em>f</em><span>Fuerte</span></button><button data-score-action="dynamic-p"><em>p</em><span>Suave</span></button><button data-score-action="accent"><em>&gt;</em><span>Acento</span></button></div>
-            <div class="palette-group"><h4>TEXTO</h4><button id="addTextTool">T <span>Texto</span></button><button id="tempoTool">♩ <span>Tempo</span></button></div>
-            <section class="quick-actions-palette" aria-label="Acciones rápidas"><h4>ACCIONES RÁPIDAS</h4><div class="quick-action-buttons" id="quickActionButtons"></div><details class="quick-action-settings"><summary>Personalizar y ordenar</summary><div id="quickActionConfig"></div></details></section>
+            <div class="quick-actions-heading"><h3>Acciones rápidas</h3><p>Notación y edición</p></div>
+            <section class="palette-group quick-actions-group"><h4>ALTERACIONES</h4><button data-score-action="sharp" aria-label="Aplicar sostenido a las notas seleccionadas" title="Sostenido (solo notas seleccionadas)">♯ <span>Sostenido</span></button><button data-score-action="flat" aria-label="Aplicar bemol a las notas seleccionadas" title="Bemol (solo notas seleccionadas)">♭ <span>Bemol</span></button><button data-score-action="natural" aria-label="Aplicar becuadro a las notas seleccionadas" title="Becuadro (solo notas seleccionadas)">♮ <span>Becuadro</span></button></section>
+            <section class="palette-group quick-actions-group"><h4>GRUPOS RÍTMICOS</h4><div class="quick-tuplets"><button data-tuplet="3" data-tuplet-label="Tresillo" title="Crear tresillo 3:2">3 <span>Tresillo</span></button><button data-tuplet="5" data-tuplet-label="Quintillo" title="Crear quintillo 5:4">5 <span>Quintillo</span></button><button data-tuplet="6" data-tuplet-label="Seisillo" title="Crear seisillo 6:4">6 <span>Seisillo</span></button><button data-tuplet="7" data-tuplet-label="Septillo" title="Crear septillo 7:4">7 <span>Septillo</span></button><button data-tuplet="9" data-tuplet-label="Novillo" title="Crear grupo de nueve 9:8">9 <span>Novillo</span></button></div></section>
+            <section class="palette-group quick-actions-group"><h4>NOTACIÓN</h4><button id="autoBeamBtn" class="active" aria-pressed="true" title="Unir figuras cortas automáticamente">♫ <span>Unir automáticamente</span></button><button data-score-action="rest" aria-label="Insertar silencio" title="Insertar silencio fijo">𝄽 <span>Insertar silencio</span></button><button data-score-action="tie" aria-label="Aplicar ligadura" title="Ligadura">⌒ <span>Ligadura</span></button><button data-score-action="dot" aria-label="Aplicar puntillo a las notas seleccionadas" title="Puntillo">• <span>Puntillo</span></button><button id="beamSelectionBtn" title="Unir o separar las figuras seleccionadas">⟍ <span>Unir selección</span></button><button data-score-action="crescendo" title="Crescendo: selecciona inicio y fin con Ctrl/Cmd + clic">◁ <span>Crescendo</span></button><button data-score-action="diminuendo" title="Diminuendo: selecciona inicio y fin con Ctrl/Cmd + clic">▷ <span>Diminuendo</span></button></section>
+            <section class="palette-group quick-actions-group"><h4>SÍMBOLOS</h4><button data-score-action="fermata">∞ <span>Calderón</span></button><button data-score-action="repeat">↻ <span>Repetición</span></button></section>
+            <section class="palette-group quick-actions-group"><h4>DINÁMICAS</h4><button data-score-action="dynamic-mf"><em>mf</em><span>Medio fuerte</span></button><button data-score-action="dynamic-f"><em>f</em><span>Fuerte</span></button><button data-score-action="dynamic-p"><em>p</em><span>Suave</span></button><button data-score-action="accent"><em>&gt;</em><span>Acento</span></button></section>
+            <section class="palette-group quick-actions-group palette-settings"><h4>PARTITURA</h4><button id="scoreSettingsBtn" type="button">⚙ <span>Clave y armadura</span></button></section>
           </aside>
           <div class="score-workspace">
+            <section class="score-metadata-bar" aria-label="Vista y encabezado de la partitura">
+              <button id="editScoreMetadataBtn" class="score-metadata-button" type="button" aria-label="Editar encabezado de la partitura" title="Editar encabezado de la partitura">Editar encabezado</button>
+              <div class="score-zoom-controls" role="group" aria-label="Zoom del pentagrama"><button id="scoreZoomOut" type="button" aria-label="Alejar">−</button><output id="scoreZoomValue" for="scoreZoomRange">100%</output><input id="scoreZoomRange" type="range" min="50" max="200" step="10" value="100" aria-label="Zoom del pentagrama"><button id="scoreZoomIn" type="button" aria-label="Acercar">+</button><button id="scoreZoomReset" type="button">Ajustar</button></div>
+            </section>
             <div class="score-sheet" id="scoreSheet"><div id="scoreCanvas" role="application" aria-label="Editor de partitura. Haz clic para insertar notas o enfócalo y pulsa Enter para añadir la siguiente nota; usa flechas para moverla." tabindex="0"></div></div>
             <div class="editor-bottom"><span>Compases <b id="measureCount">1</b> · ♩=<b id="tempoValue">80</b></span><div class="playback-controls"><button id="prevBtn" title="Compás anterior">|◀</button><button class="round-play" id="playBtn" title="Reproducir partitura">▶</button><button id="stopBtn" title="Detener reproducción">■</button><button id="nextBtn" title="Compás siguiente">▶|</button></div><span id="editorClock">00:00 / 00:00</span><label>Tempo <b id="tempoRangeValue">80</b> BPM <input id="tempoRange" type="range" min="40" max="220" value="80" aria-label="Tempo en BPM"></label><button id="metronomeBtn" class="metronome" title="Alternar metrónomo">♩</button></div>
           </div>
@@ -106,6 +117,80 @@
       <header class="page-header compact"><div><span class="eyebrow">APRENDIZAJE</span><h1>Módulo Educativo</h1><p>Aprende teoría, lectura y composición musical.</p></div></header>
       <div class="lesson-grid"><button class="lesson-card"><span>♬</span><b>Teoría Musical</b><small>12 lecciones</small></button><button class="lesson-card"><span>♫</span><b>Lectura Rítmica</b><small>8 lecciones</small></button><button class="lesson-card"><span>⌁</span><b>Armonía</b><small>10 lecciones</small></button><button class="lesson-card"><span>✎</span><b>Composición</b><small>7 lecciones</small></button></div>
       <div class="education-panels"><div class="panel-card progress-card"><div class="section-title"><div><h2>Tu progreso</h2><p>Nivel 7 · Intermedio</p></div><b>750 / 1200 XP</b></div><div class="progress-bar"><span style="width:62%"></span></div><div class="progress-caption"><span>62%</span></div><div class="lesson-feature"><div><span class="lesson-icon">♧</span><div><b>Lección sugerida</b><h3>Intervalos Musicales</h3><p>Aprende a identificar y usar intervalos en tus composiciones.</p><button class="primary">Continuar lección</button></div></div><div class="mini-score" id="miniScore"></div></div></div><div class="panel-card teacher-card"><span class="eyebrow">DOCENTE</span><h2>Actividades y evaluaciones</h2><form id="activityForm"><input id="activityName" placeholder="Nombre de la actividad" required><textarea id="activityDesc" placeholder="Descripción"></textarea><select id="activityProject"><option value="">Sin proyecto</option></select><button class="primary">Crear actividad</button></form><div id="activityList" class="compact-list"></div></div></div>
+    </section>
+
+    <!-- MUSICAL ASSISTANT -->
+    <section class="screen ai-screen" id="screen-ai">
+      <header class="page-header compact">
+        <div><span class="eyebrow">ASISTENTE MUSICAL</span><h1 id="aiPageTitle">IA Musical</h1><p>Ideas, explicaciones y borradores para tu proceso creativo y de aprendizaje.</p></div>
+      </header>
+      <div class="ai-layout">
+        <aside class="ai-history panel-card" aria-label="Conversaciones">
+          <div class="ai-history-heading"><strong>Conversaciones</strong><button class="primary" id="aiNewConversation" type="button">＋ Nueva</button></div>
+          <label class="ai-history-search"><span aria-hidden="true">⌕</span><input id="aiConversationSearch" type="search" placeholder="Buscar conversación" aria-label="Buscar conversación"></label>
+          <div class="ai-conversation-list" id="aiConversationList"></div>
+        </aside>
+        <section class="ai-chat panel-card" aria-label="Chat con el asistente">
+          <header class="ai-chat-header">
+            <div class="ai-brand"><span class="ai-brand-mark" aria-hidden="true">𝄞</span><strong>LYRICS</strong><span class="ai-brand-divider"></span><span class="ai-brand-title" id="aiAssistantName">Asistente musical</span></div>
+            <div class="ai-chat-actions">
+              <label class="ai-provider-picker"><span>IA</span><select id="aiProviderSelect" aria-label="Proveedor de inteligencia artificial" disabled><option>Cargando…</option></select></label>
+              <button class="ai-window-action ai-voice-output" id="aiVoiceOutput" type="button" aria-label="Activar lectura automática de respuestas" aria-pressed="false" title="Activar lectura automática de respuestas"><span aria-hidden="true">◖</span><span>Voz apagada</span></button>
+              <button class="ai-window-action" id="aiMinimizeButton" type="button" aria-label="Minimizar asistente" aria-expanded="true" aria-controls="aiChatContent" title="Minimizar">−</button>
+              <button class="ai-window-action" id="aiCloseButton" type="button" aria-label="Volver al dashboard" title="Volver al dashboard">×</button>
+            </div>
+          </header>
+          <div class="ai-chat-content" id="aiChatContent">
+            <p class="ai-connection-status" id="aiConnectionStatus" role="status" aria-live="polite">Conectando con el asistente…</p>
+            <div class="ai-visual-scene" aria-label="Rostro animado del asistente musical">
+              <svg class="ai-orbit" viewBox="0 0 600 220" aria-hidden="true"><path d="M15 111 C130 13 184 35 300 108 S470 195 585 89"></path><path d="M15 132 C130 34 184 56 300 129 S470 216 585 110"></path></svg>
+              <span class="ai-floating-note note-one" aria-hidden="true">♫</span><span class="ai-floating-note note-two" aria-hidden="true">♪</span><span class="ai-floating-note note-three" aria-hidden="true">♬</span>
+              <span class="ai-sparkle sparkle-one" aria-hidden="true">✦</span><span class="ai-sparkle sparkle-two" aria-hidden="true">✧</span><span class="ai-sparkle sparkle-three" aria-hidden="true">✦</span>
+              <div class="ai-face" id="aiFace" data-state="idle" role="img" aria-label="Asistente musical en espera">
+                <svg viewBox="0 0 240 150" aria-hidden="true">
+                  <g class="ai-eyes ai-closed-eyes"><path d="M34 70 C48 35 83 35 99 70"></path><path d="M141 70 C157 35 192 35 206 70"></path></g>
+                  <g class="ai-eyes ai-open-eyes"><path d="M38 69 C48 42 86 39 99 68 C87 91 50 91 38 69 Z"></path><path d="M141 68 C154 39 192 42 202 69 C190 91 153 91 141 68 Z"></path><circle cx="70" cy="68" r="8"></circle><circle cx="172" cy="68" r="8"></circle></g>
+                  <path class="ai-mouth" d="M103 101 C114 111 126 111 137 101"></path>
+                </svg>
+              </div>
+              <p class="ai-scene-caption" id="aiSceneCaption">Hola. ¿Qué te gustaría crear hoy?</p>
+            </div>
+            <div class="ai-messages" id="aiMessages" aria-live="polite" aria-label="Mensajes"></div>
+            <div class="ai-suggestions" id="aiSuggestions">
+              <button type="button" data-ai-prompt="Crea un borrador de evaluación de teoría musical para principiantes, con preguntas variadas y clave de respuestas separada.">Crear evaluación</button>
+              <button type="button" data-ai-prompt="Propón un dictado rítmico sencillo en 3/4 para principiantes y explica cómo trabajarlo en clase.">Diseñar dictado</button>
+              <button type="button" data-ai-prompt="Explícame de forma pedagógica cómo enseñar los intervalos musicales a estudiantes principiantes.">Consultar teoría</button>
+            </div>
+            <form class="ai-composer" id="aiMessageForm">
+              <label class="sr-only" for="aiMessageInput">Escribe o dicta tu mensaje</label>
+              <button class="ai-composer-tool" id="aiMicButton" type="button" aria-label="Hablar con el asistente" title="Dictar mensaje" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21m-4 0h8"></path></svg></button>
+              <div class="ai-composer-field">
+                <textarea id="aiMessageInput" rows="2" maxlength="4000" placeholder="Escribe o habla con tu asistente…" required></textarea>
+                <div class="ai-composer-meta"><span id="aiComposerHint">Enter envía · Shift+Enter añade una línea</span><output id="aiCharacterCount">0 / 4.000</output></div>
+              </div>
+              <button class="ai-send-button" id="aiSendButton" type="submit" aria-label="Enviar mensaje"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13m-6-6 6 6-6 6"></path></svg></button>
+            </form>
+            <p class="ai-privacy-note">Tus mensajes se envían al proveedor seleccionado y se guardan de forma privada en tu cuenta. El dictado lo procesa el servicio de voz de tu navegador; solo se envía el texto cuando pulses enviar. Evita incluir datos personales. Por ahora el asistente no analiza archivos ni crea partituras reproducibles.</p>
+          </div>
+        </section>
+      </div>
+      <div class="ai-welcome" id="aiWelcome" role="dialog" aria-modal="true" aria-labelledby="aiWelcomeTitle" hidden>
+        <div class="ai-welcome-notes" aria-hidden="true"><span>♪</span><span>♫</span><span>♬</span></div>
+        <div class="ai-welcome-content">
+          <div class="ai-welcome-face" aria-hidden="true">
+            <svg viewBox="0 0 160 110">
+              <path d="M22 43 C34 20, 57 20, 70 42 C58 58, 35 59, 22 43 Z"></path>
+              <path d="M90 42 C103 20, 126 20, 138 43 C125 59, 102 58, 90 42 Z"></path>
+              <path d="M69 78 C76 84, 84 84, 91 78"></path>
+            </svg>
+          </div>
+          <span class="ai-welcome-eyebrow">LYRICS · IA MUSICAL</span>
+          <h2 id="aiWelcomeTitle">Un espacio para explorar la música</h2>
+          <p>Conversa, aprende y da forma a nuevas ideas musicales.</p>
+          <label class="ai-sound-toggle"><input id="aiWelcomeSound" type="checkbox"> Reproducir un breve arpegio original</label>
+          <button class="primary" id="aiWelcomeEnter" type="button">Entrar al asistente</button>
+        </div>
+      </div>
     </section>
 
     <!-- LIBRARY -->
@@ -144,6 +229,8 @@
 <!-- EXPORT MODAL -->
 <div class="modal" id="saveScoreModal"><div class="modal-card save-score-modal"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">PARTITURA</span><h2>Guardar y exportar</h2><div class="save-score-layout"><section class="save-score-actions"><button class="primary" id="saveCompositionBtn">Guardar en Lyrics</button><h3>Exportar archivo</h3><div class="export-grid"><button class="active" data-export="pdf"><b>PDF</b><span>Imprimir</span></button><button data-export="musicxml"><b>MusicXML</b><span>Editar notación</span></button><button data-export="midi"><b>MIDI</b><span>Reproducir</span></button><button data-export="png"><b>PNG</b><span>Compartir</span></button></div><label class="export-quality">Calidad de impresión<select id="exportQuality"><option>Alta (300 DPI)</option><option>Media (150 DPI)</option></select></label><button class="primary export-main" id="doExport">Exportar / imprimir</button></section><section class="save-score-preview"><h3>Previsualización para impresión</h3><div id="scorePrintPreview"><p>La previsualización aparecerá aquí.</p></div></section></div></div></div>
 
+<div class="modal" id="scoreMetadataModal"><div class="modal-card score-metadata-modal"><button class="modal-close" data-close-modal aria-label="Cerrar">×</button><span class="eyebrow">PRESENTACIÓN</span><h2>Datos de la obra</h2><p class="score-settings-intro">Estos datos aparecen en la partitura y se guardan con la composición. Si aún no tienes una, se conservarán como borrador local hasta que la crees o selecciones una composición.</p><form id="scoreMetadataForm"><label>Título<input id="scoreTitleInput" type="text" maxlength="160" placeholder="Título de la obra"></label><label>Subtítulo<input id="scoreSubtitleInput" type="text" maxlength="160" placeholder="Opcional"></label><div class="score-metadata-form-row"><label>Compositor / autor<input id="scoreComposerInput" type="text" maxlength="120" placeholder="Nombre del compositor"></label><label>Arreglista<input id="scoreArrangerInput" type="text" maxlength="120" placeholder="Opcional"></label></div><div class="score-metadata-form-row"><label>Letrista<input id="scoreLyricistInput" type="text" maxlength="120" placeholder="Opcional"></label><label>Copyright<input id="scoreCopyrightInput" type="text" maxlength="160" placeholder="Opcional"></label></div><label>Fuente del título<select id="scoreTitleFont"><option value="serif">Clásica</option><option value="sans-serif">Sans serif</option><option value="Georgia, serif">Georgia</option><option value="Palatino Linotype, serif">Palatino</option></select></label><div class="modal-actions"><button type="button" class="ghost" data-close-modal>Cancelar</button><button class="primary" type="submit">Aplicar y guardar</button></div></form></div></div>
+
 <!-- RECORDING SETTINGS -->
 <div class="modal" id="recordSettingsModal"><div class="modal-card settings-modal"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">CONFIGURACIÓN</span><h2>Ajustes de Grabación</h2><div class="settings-tabs"><button class="active">Dispositivos</button><button>Grabación</button><button>Detección de notas</button><button>Visualización</button><button>Atajos de teclado</button></div><div class="settings-form"><label>Dispositivo de entrada<select id="inputDevice"><option>Micrófono predeterminado</option></select></label><label>Nivel de entrada<div class="setting-meter"><span></span></div></label><label>Interfaz de audio<select><option>Predeterminada</option><option>Focusrite Scarlett 2i2</option></select></label><label>Formato de grabación<select><option>WAV (Sin compresión)</option><option>WebM</option></select></label><label>Canal<select><option>Entrada 1</option><option>Estéreo</option></select></label><label>Frecuencia de muestreo<select><option>44.1 kHz</option><option>48 kHz</option></select></label></div><button class="ghost" id="testInput">♩ Probar entrada</button></div></div>
 
@@ -155,10 +242,12 @@
 
 <div class="modal" id="editorHelpModal"><div class="modal-card editor-help-modal"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">EDITOR DE PARTITURAS</span><h2>Herramientas y atajos</h2><p class="shortcut-hint">Pulsa «Añadir» para conservar los atajos actuales o «Cambiar» para sustituirlos. Puedes asignar combinaciones con Ctrl/Cmd, Alt y Shift; pulsa × para quitar una combinación. Escape cancela la captura y Tab queda reservado para navegar.</p><div class="shortcut-list" id="shortcutSettingsList"></div><div class="shortcut-settings-actions"><button class="ghost" id="resetEditorShortcuts" type="button">Restaurar atajos predeterminados</button></div></div></div>
 <div class="modal" id="editorPropertiesModal"><div class="modal-card"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">PARTITURA</span><h2>Propiedades de la partitura</h2><div class="editor-property-grid"><label>Compás superior<select id="meterNumerator"><option>4</option><option>3</option><option>2</option><option>6</option></select></label><label>Compás inferior<select id="meterDenominator"><option>4</option><option>8</option><option>2</option></select></label><label>Instrumento<select id="scoreInstrumentSelect"><option>Piano</option><option>Guitarra</option><option>Batería</option><option>Bajo</option><option>Violín</option><option>Flauta</option><option>Saxo</option><option>Trompeta</option><option>Cello</option><option>Clarinete</option></select></label><p class="editor-property-status" id="selectedNoteProperties">Selecciona una nota para editarla.</p></div></div></div>
+<div class="modal" id="scoreSettingsModal"><div class="modal-card score-settings-modal"><button class="modal-close" data-close-modal aria-label="Cerrar">×</button><span class="eyebrow">CONFIGURACIÓN MUSICAL</span><h2>Clave, armadura y escala</h2><p class="score-settings-intro">Elige la clave, la tonalidad y el tipo de escala. La armadura se ajustará automáticamente.</p><form id="scoreSettingsForm"><div class="score-settings-grid"><label>Clave<select id="scoreClef"><option value="treble">Sol (G) · registro agudo</option><option value="bass">Fa (F) · registro grave</option><option value="alto">Do (C) · línea central</option><option value="tenor">Do (C) · cuarta línea</option><option value="percussion">Percusión · altura orientativa</option></select></label><label>Tónica<select id="scoreTonic"><option>C</option><option>C#</option><option>Db</option><option>D</option><option>D#</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>Gb</option><option>G</option><option>G#</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select></label><label>Escala<select id="scoreScaleType"><option value="major">Mayor (jónico)</option><option value="naturalMinor">Menor natural (eólico)</option><option value="harmonicMinor">Menor armónica</option><option value="melodicMinor">Menor melódica ascendente</option><option value="dorian">Dórico</option><option value="phrygian">Frigio</option><option value="lydian">Lidio</option><option value="mixolydian">Mixolidio</option><option value="locrian">Locrio</option><option value="majorPentatonic">Pentatónica mayor</option><option value="minorPentatonic">Pentatónica menor</option><option value="blues">Blues</option><option value="wholeTone">Tonos enteros</option><option value="diminishedWholeHalf">Disminuida tono-semitono</option><option value="diminishedHalfWhole">Disminuida semitono-tono</option><option value="chromatic">Cromática</option></select></label></div><div class="modal-actions"><button type="button" class="ghost" data-close-modal>Cancelar</button><button class="primary" type="submit">Aplicar a la partitura</button></div></form></div></div>
 <div class="modal" id="editorAnnotationModal"><div class="modal-card"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">ANOTACIÓN</span><h2 id="editorAnnotationTitle">Añadir texto a la partitura</h2><form id="editorAnnotationForm"><label id="editorAnnotationLabel">Texto<input id="editorAnnotationInput" required maxlength="80"></label><div class="modal-actions"><button type="button" class="ghost" data-close-modal>Cancelar</button><button class="primary">Aplicar</button></div></form></div></div>
 <div class="modal" id="adminRecordModal"><div class="modal-card admin-record-modal"><button class="modal-close" data-close-modal>×</button><span class="eyebrow">ADMINISTRACIÓN</span><h2 id="adminRecordTitle">Registro</h2><p id="adminRecordHint"></p><form id="adminRecordForm"><div class="admin-record-fields" id="adminRecordFields"></div><div class="modal-actions"><button type="button" class="ghost" data-close-modal>Cancelar</button><button class="primary" id="adminRecordSave">Guardar</button></div></form></div></div>
 
 <div id="toast" class="toast"></div>
 <script src="dashboard.js"></script>
+<script src="ai.js"></script>
 </body>
 </html>
