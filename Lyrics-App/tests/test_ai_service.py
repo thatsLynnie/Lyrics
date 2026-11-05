@@ -173,6 +173,9 @@ class OpenAIServiceTests(unittest.TestCase):
                 AssistantServiceError("OpenAI alcanzó su cuota."),
                 AssistantServiceError("Gemini está temporalmente ocupado."),
             ],
+        ), patch(
+            "ai_service.generate_local_reply",
+            return_value="Respuesta local de ritmo (sin IA generativa).",
         ):
             answer, provider, notice = generate_reply_with_fallback(
                 [{"role": "user", "content": "Dame un ejercicio de ritmo."}],
@@ -180,7 +183,7 @@ class OpenAIServiceTests(unittest.TestCase):
             )
 
         self.assertEqual(provider, "local")
-        self.assertIn("palmada", answer)
+        self.assertIn("Respuesta local de ritmo", answer)
         self.assertIn("sin IA generativa", answer)
         self.assertIn("OpenAI alcanzó su cuota", notice)
         self.assertIn("Gemini está temporalmente ocupado", notice)

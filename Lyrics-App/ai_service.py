@@ -240,7 +240,7 @@ def generate_local_reply(history):
 def generate_reply_with_fallback(history, provider="openai"):
     provider_settings(provider)
     if provider == "local":
-        return generate_reply(history, provider="local"), "local", (
+        return generate_local_reply(history), "local", (
             "Modo local: respuesta musical guiada, sin IA generativa."
         )
 
@@ -262,7 +262,7 @@ def generate_reply_with_fallback(history, provider="openai"):
         except AssistantServiceError as error:
             errors.append(f"{provider_settings(candidate)['name']}: {error}")
 
-    answer = generate_reply(history, provider="local")
+    answer = generate_local_reply(history)
     detail = " / ".join(errors)
     notice = "Los servicios de IA generativa no respondieron. Se usó el asistente local."
     if detail:

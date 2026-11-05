@@ -247,7 +247,9 @@ class LyricsAppTests(unittest.TestCase):
         self.assertEqual(self.client.get("/api/ai/config").status_code, 401)
         self.assertEqual(self.register(self.client, "composer@example.com").status_code, 200)
         self.assertEqual(self.client.get("/api/ai/config").status_code, 200)
-        self.assertFalse(self.client.get("/api/ai/config").json["configured"])
+        config = self.client.get("/api/ai/config").json
+        self.assertTrue(config["configured"])
+        self.assertEqual(config["default_provider"], "local")
         created = self.client.post(
             "/api/ai/conversations",
             json={"titulo": "Clase de ritmo"},
