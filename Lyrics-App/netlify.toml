@@ -1,0 +1,20 @@
+# Configuración de Netlify para el frontend de Lyrics.
+# El backend Flask + MySQL se aloja aparte; ver la sección "Despliegue" del README.
+#
+# Variable de entorno obligatoria en Netlify (Site configuration > Environment variables):
+#   LYRICS_BACKEND_URL = https://tu-backend.example.com
+[build]
+  command = "python3 scripts/build_netlify.py"
+  publish = "dist"
+
+[build.environment]
+  PYTHON_VERSION = "3.11"
+
+# Cabeceras de seguridad para todo el sitio.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "microphone=(self), camera=(), geolocation=()"

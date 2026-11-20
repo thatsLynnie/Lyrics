@@ -81,7 +81,12 @@ function bindScoreMetadataInput(selector,key){const input=$(selector);if(!input)
 loadScoreZoom();
 const instruments=[['♬','Piano'],['♩','Guitarra'],['◉','Batería'],['♬','Bajo'],['♮','Violín'],['♪','Flauta'],['♩','Saxo'],['♬','Trompeta'],['♮','Cello'],['♪','Clarinete'],['•••','Más']];
 function esc(v=''){return String(v).replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))}
-async function api(url,opts={}){let r;try{r=await fetch(url,opts)}catch(error){const connectionError=new Error('No se pudo conectar con el servidor.');connectionError.status=0;throw connectionError}let d={};try{d=await r.json()}catch{}if(!r.ok||d.ok===false){const responseError=new Error(d.message||`Error ${r.status}`);responseError.status=r.status;throw responseError}return d}
+/* Cliente HTTP único: todas las pantallas llaman a la API por aquí. Devuelve el JSON si ok; si no,
+   lanza un Error con un mensaje en español y la propiedad .status (0 = sin conexión). */
+const API_FALLBACK_MESSAGES={401:'Tu sesión expiró. Inicia sesión de nuevo.',403:'No tienes permisos para esta acción.',404:'No se encontró lo que buscas.',413:'El archivo es demasiado grande.',429:'Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.'};
+async function api(url,opts={}){let r;try{r=await fetch(url,opts)}catch(error){const connectionError=new Error('No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.');connectionError.status=0;throw connectionError}let d={};try{d=await r.json()}catch{}if(!r.ok||d.ok===false){const fallback=API_FALLBACK_MESSAGES[r.status]||(r.status>=500?'El servidor tuvo un problema. Inténtalo de nuevo en unos minutos.':`No se pudo completar la solicitud (error ${r.status}).`);const responseError=new Error(d.message||fallback);responseError.status=r.status;throw responseError}return d}
+/* Red de seguridad: una promesa rechazada que ninguna pantalla capturó no debe fallar en silencio. */
+window.addEventListener('unhandledrejection',event=>{console.error('Error no controlado:',event.reason);if(event.reason&&event.reason.status===401){location.replace('/#loginModal');return}toast(event.reason&&event.reason.message?event.reason.message:'Ocurrió un error inesperado.');event.preventDefault()});
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),2600)}
 const shortcutDefinitions=[
 {id:'durationWhole',label:'Seleccionar redonda'},
@@ -128,7 +133,7 @@ function initials(name='Usuario'){return name.split(/\s+/).filter(Boolean).slice
 function openModal(id){$(id).classList.add('show')}function closeModal(id){if(id==='#editorHelpModal')capturingShortcut=null;$(id).classList.remove('show')}
 function setView(view){$('#app').classList.toggle('editor-mode',view==='editor');$$('.screen').forEach(s=>s.classList.toggle('active',s.id===`screen-${view}`));$$('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));if(window.innerWidth<760)$('#sidebar').classList.remove('open');if(view==='dashboard')loadDashboard();if(view==='projects')loadProjects();if(view==='editor')loadEditorData();if(view==='recording')loadRecordingData();if(view==='education')loadEducation();if(view==='ai')loadAiWorkspace();if(view==='library')loadLibrary();if(view==='profile')renderProfile();if(view==='admin')loadAdminData();}
 $$('.nav-item').forEach(b=>b.onclick=()=>setView(b.dataset.view));$$('[data-view-target]').forEach(b=>b.onclick=()=>setView(b.dataset.viewTarget));$('#mobileMenu').onclick=()=>$('#sidebar').classList.toggle('open');
-$('#logoutBtn').onclick=async()=>{await api('/api/logout',{method:'POST'});location.href='/'};
+$('#logoutBtn').onclick=async()=>{try{await api('/api/logout',{method:'POST'});location.href='/'}catch(error){toast(`No se pudo cerrar la sesión: ${error.message}`)}};
 async function loadMe(){const d=await api('/api/me');if(!d.user){location.replace('/#loginModal');return}state.user=d.user;$('#adminNav').hidden=d.user.rol!=='administrador';const name=d.user.nombre||'Usuario';$('#helloName').textContent=name.split(' ')[0];$('#sideUserName').textContent=name;$('#sideUserRole').textContent=(d.user.rol||'compositor').replace(/^./,x=>x.toUpperCase());$('#sideAvatar').textContent=initials(name);$('#profileDisplayName').textContent=name;$('#profileDisplayRole').textContent=(d.user.rol||'compositor').replace(/^./,x=>x.toUpperCase());$('#profileAvatar').textContent=initials(name);$('#profileName').value=name;$('#profileEmail').value=d.user.correo;$('#profileBio').value=d.user.biografia||'';}
 async function loadProjects(){try{const d=await api('/api/projects');state.projects=d.projects||[];renderProjects();return true}catch(e){if(e.status===401){location.replace('/#loginModal');return null}state.projects=[];renderProjects();toast(e.status===0?'No se pudo conectar con el servidor. Vuelve a intentarlo cuando esté iniciado.':`No se pudieron cargar los proyectos: ${e.message}`);console.error('No se pudieron cargar los proyectos:',e);return false}}
 function projectThumb(p){return `<div class="score-thumb"></div>`}
@@ -343,6 +348,7 @@ function renderAdminTable(){
 }
 function openAdminRecord(row=null){
 	adminState.editKey=null;
+	$('#adminRecordError').hidden=true; // no arrastrar el error de un intento anterior
 	const creating=!row;
 	$('#adminRecordTitle').textContent=creating?'Crear registro':'Editar registro';
 	$('#adminRecordHint').textContent=creating?'Los campos con valores predeterminados pueden dejarse vacíos.':'Los identificadores primarios no se pueden modificar.';
@@ -371,6 +377,11 @@ function openAdminRecord(row=null){
 async function saveAdminRecord(event){
 	event.preventDefault();
 	const form=event.currentTarget,fields=Object.fromEntries(new FormData(form).entries());
+	// Estado de carga: se bloquea el botón y el error se muestra dentro del modal, donde la persona lo ve.
+	const saveButton=$('#adminRecordSave'),errorBox=$('#adminRecordError'),idleLabel=saveButton.textContent;
+	if(saveButton.disabled)return;
+	errorBox.hidden=true;errorBox.textContent='';
+	saveButton.disabled=true;saveButton.textContent='Guardando…';
 	try{
 		if(adminState.table==='users'){
 			fields.id_rol=Number(fields.id_rol);
@@ -390,7 +401,8 @@ async function saveAdminRecord(event){
 			});
 		}
 		closeModal('#adminRecordModal');form.reset();await loadAdminData();toast(adminState.table==='users'?'Usuario creado.':'Registro guardado.');
-	}catch(error){toast(error.message)}
+	}catch(error){errorBox.textContent=error.message;errorBox.hidden=false}
+	finally{saveButton.disabled=false;saveButton.textContent=idleLabel}
 }
 async function deleteAdminRecord(row){
 	const keys=Object.fromEntries(adminState.columns.filter(column=>column.primary).map(column=>[column.name,row[column.name]]));

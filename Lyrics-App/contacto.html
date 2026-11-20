@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Contacto · Lyrics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alan+Sans:wght@300..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="contacto.css">
+</head>
+<body class="contact-page">
+<nav class="contact-page__bar" aria-label="Navegación">
+  <a class="contact-page__brand" href="/">LYRICS</a>
+  <a href="/">← Volver al inicio</a>
+</nav>
+<main>
+<section class="lyrics-contact" id="contacto" aria-labelledby="contactTitle">
+  <div class="lyrics-contact__intro">
+    <span class="lyrics-contact__eyebrow">CONTACTO</span>
+    <h2 id="contactTitle">Escríbenos</h2>
+    <p>¿Dudas, ideas o problemas con Lyrics? Cuéntanos y te responderemos al correo que indiques.</p>
+  </div>
+
+  <form class="lyrics-contact__form" id="contactForm" novalidate>
+    <div class="contact-field">
+      <label for="contactNombre">Nombre</label>
+      <input id="contactNombre" name="nombre" type="text" autocomplete="name" maxlength="120" required aria-describedby="error-nombre">
+      <p class="contact-error" id="error-nombre" role="alert"></p>
+    </div>
+
+    <div class="contact-field">
+      <label for="contactCorreo">Correo electrónico</label>
+      <input id="contactCorreo" name="correo" type="email" autocomplete="email" maxlength="255" required aria-describedby="error-correo">
+      <p class="contact-error" id="error-correo" role="alert"></p>
+    </div>
+
+    <div class="contact-field">
+      <label for="contactAsunto">Asunto</label>
+      <input id="contactAsunto" name="asunto" type="text" maxlength="150" required aria-describedby="error-asunto">
+      <p class="contact-error" id="error-asunto" role="alert"></p>
+    </div>
+
+    <div class="contact-field">
+      <label for="contactMensaje">Mensaje</label>
+      <textarea id="contactMensaje" name="mensaje" rows="6" maxlength="3000" required aria-describedby="error-mensaje contactCounter"></textarea>
+      <div class="contact-field__meta">
+        <p class="contact-error" id="error-mensaje" role="alert"></p>
+        <output id="contactCounter" for="contactMensaje">0 / 3000</output>
+      </div>
+    </div>
+
+    <!-- Honeypot anti-spam: las personas no lo ven ni lo rellenan; muchos bots sí. -->
+    <div class="contact-honeypot" aria-hidden="true">
+      <label for="contactSitioWeb">No rellenes este campo</label>
+      <input id="contactSitioWeb" name="sitio_web" type="text" tabindex="-1" autocomplete="off">
+    </div>
+
+    <p class="contact-status" id="contactStatus" role="status" aria-live="polite" hidden></p>
+    <button class="contact-submit" type="submit">Enviar mensaje</button>
+    <p class="contact-privacy">Usaremos tu correo solo para responderte. No lo compartimos con terceros.</p>
+  </form>
+</section>
+</main>
+<script src="/contact.js"></script>
+</body>
+</html>

@@ -118,6 +118,47 @@ function configureAiProviders(config){
 	const missingKey=missingProvider==='Gemini'?'GEMINI_API_KEY':'OPENAI_API_KEY';
 	select.title=missingProvider?`Para alternar, configura ${missingKey} en el archivo .env del servidor.`:'';
 }
+/* Personalización de la IA: nivel musical guardado en el servidor y sugerencias según el rol. */
+const AI_LEVEL_LABELS={principiante:'Principiante',intermedio:'Intermedio',avanzado:'Avanzado'};
+const AI_SUGGESTIONS_BY_ROLE={
+	docente:[
+		['Crear evaluación','Crea un borrador de evaluación de teoría musical, con preguntas variadas y clave de respuestas separada. Pregúntame el nivel del grupo si lo necesitas.'],
+		['Diseñar dictado','Propón un dictado rítmico sencillo en 3/4 y explica cómo trabajarlo en clase.'],
+		['Plan de clase','Ayúdame a planear una clase de 45 minutos sobre intervalos musicales, con objetivo, actividades y cierre.']
+	],
+	compositor:[
+		['Idea de melodía','Dame una idea de melodía en tonalidad menor con una progresión de acordes y explica por qué funciona.'],
+		['Desarrollar motivo','Tengo un motivo de cuatro notas. Explícame técnicas para desarrollarlo en una sección completa.'],
+		['Consultar armonía','Explícame cómo elegir acordes para armonizar una melodía de ocho compases.']
+	]
+};
+AI_SUGGESTIONS_BY_ROLE.mixto=[...AI_SUGGESTIONS_BY_ROLE.docente.slice(0,1),...AI_SUGGESTIONS_BY_ROLE.compositor.slice(0,2)];
+AI_SUGGESTIONS_BY_ROLE.administrador=AI_SUGGESTIONS_BY_ROLE.mixto;
+function renderAiSuggestions(role){
+	const items=AI_SUGGESTIONS_BY_ROLE[role];
+	if(!items)return; // sin rol conocido se conservan las sugerencias del HTML
+	const container=$('#aiSuggestions');
+	container.replaceChildren(...items.map(([label,prompt])=>{
+		const button=document.createElement('button');
+		button.type='button';
+		button.dataset.aiPrompt=prompt;
+		button.textContent=label;
+		return button;
+	}));
+}
+function configureAiLevel(config){
+	const select=$('#aiLevelSelect');
+	const levels=Array.isArray(config.levels)&&config.levels.length?config.levels:Object.keys(AI_LEVEL_LABELS);
+	select.replaceChildren(...levels.map(level=>{
+		const option=document.createElement('option');
+		option.value=level;
+		option.textContent=AI_LEVEL_LABELS[level]||level;
+		return option;
+	}));
+	select.value=levels.includes(config.level)?config.level:'intermedio';
+	select.dataset.saved=select.value;
+	select.disabled=false;
+}
 function selectedAiProvider(){
 	return aiState.providers.find(provider=>provider.id===aiState.provider)||null;
 }
@@ -536,6 +577,8 @@ async function loadAiWorkspace(){
 		$('#aiPageTitle').textContent=config.assistant_name;
 		aiState.configured=config.configured;
 		configureAiProviders(config);
+		configureAiLevel(config);
+		renderAiSuggestions(config.role);
 		updateAiVoiceControls();
 		$('#aiMessageInput').disabled=!config.configured;
 		$('#aiSendButton').disabled=!config.configured;
@@ -597,12 +640,29 @@ $('#aiCloseButton').onclick=()=>{
 	setView('dashboard');
 };
 $('#aiConversationSearch').oninput=renderAiConversationList;
-$$('[data-ai-prompt]').forEach(button=>button.onclick=()=>{
-	if(!aiState.configured)return;
+// Delegación de eventos: las sugerencias se vuelven a crear según el rol de la persona.
+$('#aiSuggestions').onclick=event=>{
+	const button=event.target.closest('[data-ai-prompt]');
+	if(!button||!aiState.configured)return;
 	$('#aiMessageInput').value=button.dataset.aiPrompt;
 	updateAiComposer();
 	$('#aiMessageInput').focus();
-});
+};
+$('#aiLevelSelect').onchange=async()=>{
+	const select=$('#aiLevelSelect'),previous=select.dataset.saved;
+	select.disabled=true;
+	setAiStatus('Guardando tu nivel…');
+	try{
+		await api('/api/ai/preferences',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({nivel:select.value})});
+		select.dataset.saved=select.value;
+		setAiStatus(`Nivel guardado: ${AI_LEVEL_LABELS[select.value]||select.value}. Las próximas respuestas se adaptarán.`);
+	}catch(error){
+		select.value=previous; // se revierte para que la pantalla refleje lo que sí quedó guardado
+		setAiStatus(`No se pudo guardar el nivel: ${error.message}`,true);
+	}finally{
+		select.disabled=aiState.busy;
+	}
+};
 $('#aiMessageInput').onkeydown=event=>{
 	if(event.key==='Enter'&&!event.shiftKey&&!event.isComposing){
 		event.preventDefault();

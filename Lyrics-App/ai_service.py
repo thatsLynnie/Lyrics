@@ -22,6 +22,57 @@ Presenta los ejercicios, evaluaciones e ideas de composición como borradores qu
 persona usuaria debe revisar; no presentes resultados musicales no verificados como
 certezas."""
 
+# --- Personalización ----------------------------------------------------------
+# El prompt base (SYSTEM_PROMPT) se complementa por persona con su rol, su nombre de
+# pila y el nivel que eligió, además de una descripción de las secciones de Lyrics
+# para que la IA pueda orientar dentro de la plataforma.
+AI_LEVELS = ("principiante", "intermedio", "avanzado")
+
+LEVEL_GUIDANCE = {
+    "principiante": "Usa un lenguaje sencillo, define cada término técnico la primera vez y apóyate en ejemplos cortos y en pasos pequeños.",
+    "intermedio": "Asume conocimientos básicos de lectura y teoría; explica con claridad pero sin repetir lo elemental.",
+    "avanzado": "Usa terminología técnica precisa, ve directo al análisis y puedes proponer alternativas y matices (armonía funcional, voice leading, forma).",
+}
+
+ROLE_GUIDANCE = {
+    "docente": "La persona es docente: prioriza planeación de clases, actividades, evaluaciones con criterios o rúbricas, dictados y estrategias didácticas.",
+    "compositor": "La persona es compositora: prioriza ideas melódicas y armónicas, forma, desarrollo de motivos y cómo llevarlas al Editor de Partituras.",
+    "mixto": "La persona enseña y compone: equilibra recursos didácticos con ideas de composición según lo que pida.",
+    "administrador": "La persona administra la plataforma: ayuda con dudas generales de música y de Lyrics; los cambios en los datos se hacen desde la sección Administración.",
+}
+
+PLATFORM_GUIDE = """Secciones de Lyrics que puedes mencionar para orientar a la persona:
+- Editor de Partituras: notas, silencios, alteraciones, ligaduras, dinámicas, tresillos y exportación.
+- Grabación: graba desde el micrófono y estima notas de una voz o instrumento monofónico.
+- Biblioteca: partituras de sus proyectos, con filtros y favoritas.
+- Módulo Educativo: actividades y evaluaciones para docentes.
+Solo sugiere una sección cuando de verdad ayude a lo que pide."""
+
+
+def _first_name(full_name):
+    """Nombre de pila saneado: solo letras (incluye acentos), espacios y guiones."""
+    cleaned = "".join(ch for ch in str(full_name or "") if ch.isalpha() or ch in " -'")
+    first = cleaned.strip().split(" ")[0] if cleaned.strip() else ""
+    return first[:30]
+
+
+def build_system_prompt(profile=None):
+    """Arma el prompt de sistema personalizado. Sin perfil devuelve el prompt base."""
+    if not profile:
+        return SYSTEM_PROMPT
+    parts = [SYSTEM_PROMPT]
+    role = ROLE_GUIDANCE.get(profile.get("rol"))
+    if role:
+        parts.append(role)
+    level = profile.get("nivel")
+    if level in LEVEL_GUIDANCE:
+        parts.append(f"Nivel musical elegido: {level}. {LEVEL_GUIDANCE[level]}")
+    name = _first_name(profile.get("nombre"))
+    if name:
+        parts.append(f"Puedes dirigirte a la persona como {name}, sin abusar de ello.")
+    parts.append(PLATFORM_GUIDE)
+    return "\n\n".join(parts)
+
 
 PROVIDERS = {
     "openai": {
@@ -97,7 +148,21 @@ def daily_limit():
     return limit
 
 
-def generate_reply(history, provider="openai"):
+def request_timeout():
+    """Segundos máximos de espera al proveedor (LYRICS_AI_TIMEOUT, 5-60; por defecto 35).
+
+    Si el sitio se publica detrás del proxy de Netlify, que corta a los 26 s, usa 20-22
+    para que el error llegue como mensaje claro y no como un 504 del proxy.
+    """
+    raw = os.environ.get("LYRICS_AI_TIMEOUT", "35").strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        return 35
+    return min(60, max(5, value))
+
+
+def generate_reply(history, provider="openai", profile=None):
     if provider == "local":
         return generate_local_reply(history)
     settings = provider_settings(provider)
@@ -112,10 +177,11 @@ def generate_reply(history, provider="openai"):
     if not model:
         raise AssistantServiceError(f"{PROVIDERS[provider]['model_env']} no puede estar vacío.", status_code=503)
 
+    system_prompt = build_system_prompt(profile)
     if provider == "openai":
         body = json.dumps({
             "model": model,
-            "messages": [{"role": "system", "content": SYSTEM_PROMPT}, *history],
+            "messages": [{"role": "system", "content": system_prompt}, *history],
             "max_tokens": 1200,
             "temperature": 0.4,
         }).encode("utf-8")
@@ -137,7 +203,7 @@ def generate_reply(history, provider="openai"):
             for message in history
         ]
         body = json.dumps({
-            "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+            "systemInstruction": {"parts": [{"text": system_prompt}]},
             "contents": contents,
             "generationConfig": {"maxOutputTokens": 1200, "temperature": 0.4},
         }).encode("utf-8")
@@ -152,7 +218,7 @@ def generate_reply(history, provider="openai"):
         )
 
     try:
-        with urlopen(request, timeout=35) as response:
+        with urlopen(request, timeout=request_timeout()) as response:
             data = json.loads(response.read().decode("utf-8"))
     except HTTPError as error:
         try:
@@ -237,7 +303,8 @@ def generate_local_reply(history):
     return f"Respuesta del asistente local (sin IA generativa):\n\n{answer}"
 
 
-def generate_reply_with_fallback(history, provider="openai"):
+def generate_reply_with_fallback(history, provider="openai", profile=None):
+    """Intenta el proveedor elegido, luego el otro configurado y por último el asistente local."""
     provider_settings(provider)
     if provider == "local":
         return generate_local_reply(history), "local", (
@@ -252,7 +319,7 @@ def generate_reply_with_fallback(history, provider="openai"):
     )
     for candidate in candidates:
         try:
-            answer = generate_reply(history, provider=candidate)
+            answer = generate_reply(history, provider=candidate, profile=profile)
             if candidate == provider:
                 return answer, candidate, ""
             return answer, candidate, (

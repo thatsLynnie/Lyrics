@@ -1,11 +1,13 @@
 from flask import Flask, request, jsonify, session, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import HTTPException
 from functools import wraps
 from contextlib import contextmanager
 from pathlib import Path
 from datetime import datetime, timedelta
-import sqlite3, os, json, csv, io
+from collections import defaultdict, deque
+import sqlite3, os, json, csv, io, logging, re, time
 import mysql.connector
 from dotenv import load_dotenv
 
@@ -13,6 +15,7 @@ BASE = Path(__file__).resolve().parent
 LANDING = BASE / 'Lyrics_F'
 load_dotenv(BASE / '.env')
 from ai_service import (
+    AI_LEVELS,
     AssistantServiceError,
     assistant_name,
     available_providers,
@@ -21,6 +24,8 @@ from ai_service import (
     is_configured,
     provider_settings,
 )
+
+log = logging.getLogger('lyrics')
 
 DB_BACKEND = os.environ.get('LYRICS_DB_BACKEND', 'mysql').strip().lower()
 DB = Path(os.environ.get('LYRICS_DATABASE', BASE / 'lyrics.db')).expanduser().resolve()
@@ -37,10 +42,70 @@ UPLOADS.mkdir(exist_ok=True)
 ASSETS = BASE / 'img'
 ALLOWED_UPLOADS = {'mp3','wav','ogg','m4a','mid','midi','pdf','musicxml','xml','png','jpg','jpeg','txt','json'}
 
+IS_PRODUCTION = os.environ.get('LYRICS_ENV', 'development').strip().lower() == 'production'
+
 app = Flask(__name__, template_folder=str(BASE), static_folder=None)
-app.config['SECRET_KEY'] = os.environ.get('LYRICS_SECRET_KEY') or os.urandom(32)
+
+# --- Seguridad de sesión -----------------------------------------------------
+# En producción la clave DEBE ser fija: con una clave aleatoria por arranque se
+# invalidan todas las sesiones en cada reinicio y no funcionan varios workers.
+_secret_key = os.environ.get('LYRICS_SECRET_KEY', '').strip()
+if not _secret_key:
+    if IS_PRODUCTION:
+        raise RuntimeError('Define LYRICS_SECRET_KEY (valor largo y aleatorio) cuando LYRICS_ENV=production.')
+    log.warning('LYRICS_SECRET_KEY no está definida: se usa una clave temporal (las sesiones se pierden al reiniciar).')
+    _secret_key = os.urandom(32).hex()
+app.config['SECRET_KEY'] = _secret_key
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
+app.config['SESSION_COOKIE_HTTPONLY'] = True      # el JS del navegador no puede leer la cookie
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'     # mitiga CSRF en peticiones entre sitios
+app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION  # solo HTTPS en producción
 app.permanent_session_lifetime = timedelta(days=7)
+
+# Detrás de un proxy (Netlify, Render, Nginx...) la IP real llega en X-Forwarded-For.
+# Solo se confía en esa cabecera si el operador lo activa; si no, cualquiera podría falsearla
+# para esquivar los límites de intentos.
+if os.environ.get('LYRICS_TRUST_PROXY', '0') == '1':
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+
+class RateLimiter:
+    """Limitador de ventana deslizante en memoria (por proceso).
+
+    Suficiente para frenar fuerza bruta y spam en un despliegue de un solo proceso.
+    Con varios workers cada uno lleva su propia cuenta; en ese caso conviene moverlo a
+    Redis o a la base de datos.
+    """
+
+    def __init__(self):
+        self._events = defaultdict(deque)
+
+    def _prune(self, key, window, now):
+        events = self._events[key]
+        while events and now - events[0] > window:
+            events.popleft()
+        return events
+
+    def retry_after(self, key, limit, window):
+        """Segundos que faltan para poder reintentar (0 si aún hay cupo)."""
+        now = time.monotonic()
+        events = self._prune(key, window, now)
+        if len(events) < limit:
+            return 0
+        return max(1, int(window - (now - events[0])) + 1)
+
+    def hit(self, key, window):
+        now = time.monotonic()
+        self._prune(key, window, now).append(now)
+
+    def reset(self, key):
+        self._events.pop(key, None)
+
+
+rate_limiter = RateLimiter()
+LOGIN_MAX_FAILURES, LOGIN_WINDOW = 5, 15 * 60      # 5 fallos cada 15 minutos
+CONTACT_MAX_MESSAGES, CONTACT_WINDOW = 3, 10 * 60  # 3 mensajes cada 10 minutos
 
 SCHEMA = '''
 PRAGMA foreign_keys = ON;
@@ -196,6 +261,20 @@ CREATE TABLE IF NOT EXISTS ai_messages (
   id_conversacion INTEGER NOT NULL,
   FOREIGN KEY (id_conversacion) REFERENCES ai_conversations(id_conversacion) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS ai_preferences (
+  id_usuario INTEGER PRIMARY KEY,
+  nivel TEXT NOT NULL DEFAULT 'intermedio',
+  FOREIGN KEY (id_usuario) REFERENCES users(id_usuario) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id_mensaje INTEGER PRIMARY KEY AUTOINCREMENT,
+  nombre TEXT NOT NULL,
+  correo TEXT NOT NULL,
+  asunto TEXT NOT NULL,
+  mensaje TEXT NOT NULL,
+  estado TEXT NOT NULL DEFAULT 'nuevo',
+  fecha_creacion TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 '''
 
 ROLE_DATA = [
@@ -220,6 +299,7 @@ ADMIN_TABLES = {
     'evaluations': 'Evaluaciones',
     'evaluation_results': 'Resultados de evaluaciones',
     'tracking': 'Seguimiento',
+    'contact_messages': 'Mensajes de contacto',
 }
 ADMIN_READ_ONLY_TABLES = {'roles', 'users'}
 
@@ -337,7 +417,31 @@ def init_db():
                         con.execute(f'ALTER TABLE {table} ADD COLUMN {column} {definition}')
         for name, desc in ROLE_DATA:
             con.execute('INSERT OR IGNORE INTO roles(nombre,descripcion) VALUES (?,?)',(name,desc))
+        ensure_initial_admin(con)
     DB_INITIALIZED = True
+
+def ensure_initial_admin(con):
+    """Crea el primer administrador a partir de variables de entorno (opcional).
+
+    Pensado para despliegues donde no se puede ejecutar promote_admin.py. Solo CREA la
+    cuenta si el correo no existe: nunca cambia la contraseña ni el rol de una cuenta
+    existente, así que dejar las variables definidas no es un riesgo en reinicios.
+    """
+    email = os.environ.get('LYRICS_ADMIN_EMAIL', '').strip().lower()
+    password = os.environ.get('LYRICS_ADMIN_PASSWORD', '')
+    if not email and not password:
+        return
+    if '@' not in email or len(password) < 12:
+        log.error('LYRICS_ADMIN_EMAIL debe ser un correo válido y LYRICS_ADMIN_PASSWORD tener 12+ caracteres; no se creó el administrador.')
+        return
+    if con.execute('SELECT 1 FROM users WHERE correo=?', (email,)).fetchone():
+        return
+    role = con.execute("SELECT id_rol FROM roles WHERE nombre='administrador'").fetchone()
+    con.execute(
+        'INSERT INTO users(nombre,correo,contrasena_hash,id_rol) VALUES(?,?,?,?)',
+        ('Administrador', email, generate_password_hash(password), role['id_rol']),
+    )
+    log.warning('Administrador inicial creado para %s.', email)
 
 @app.before_request
 def initialize_database():
@@ -491,11 +595,80 @@ def register():
 @app.post('/api/login')
 def login():
     d=payload(); email=str(d.get('email','')).strip().lower(); password=str(d.get('password',''))
+    # Límite de intentos por IP + correo: frena la fuerza bruta contra cuentas (incluida la admin).
+    throttle_key=f'login:{request.remote_addr}:{email}'
+    wait=rate_limiter.retry_after(throttle_key,LOGIN_MAX_FAILURES,LOGIN_WINDOW)
+    if wait:
+        minutes=max(1,round(wait/60))
+        return jsonify(ok=False,message=f'Demasiados intentos fallidos. Inténtalo de nuevo en {minutes} minuto(s).'),429
     with db() as con: u=con.execute('SELECT * FROM users WHERE correo=?',(email,)).fetchone()
-    if not u or not check_password_hash(u['contrasena_hash'],password): return jsonify(ok=False,message='Correo o contraseña incorrectos.'),401
+    if not u or not check_password_hash(u['contrasena_hash'],password):
+        rate_limiter.hit(throttle_key,LOGIN_WINDOW)
+        return jsonify(ok=False,message='Correo o contraseña incorrectos.'),401
     if u['estado']!='activo': return jsonify(ok=False,message='La cuenta está inactiva.'),403
+    rate_limiter.reset(throttle_key)
+    session.clear()  # descarta cualquier sesión previa para evitar fijación de sesión
     session.permanent=True; session['user_id']=u['id_usuario']
     return jsonify(ok=True,message='Inicio de sesión correcto.',user=current_user())
+
+# --- Formulario de contacto --------------------------------------------------
+# Endpoint público (sin sesión). Los mensajes se guardan en contact_messages y el
+# administrador los gestiona desde el panel (tabla "Mensajes de contacto").
+EMAIL_PATTERN = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+CONTACT_FIELDS = {  # campo: (etiqueta para el mensaje de error, mínimo, máximo)
+    'nombre': ('El nombre', 2, 120),
+    'correo': ('El correo', 5, 255),
+    'asunto': ('El asunto', 3, 150),
+    'mensaje': ('El mensaje', 10, 3000),
+}
+
+def validate_contact(data):
+    """Devuelve (valores_limpios, errores_por_campo). Nunca lanza excepciones."""
+    values, errors = {}, {}
+    for field, (label, minimum, maximum) in CONTACT_FIELDS.items():
+        raw = data.get(field, '')
+        value = raw.strip() if isinstance(raw, str) else ''
+        if len(value) < minimum:
+            errors[field] = f'{label} es obligatorio.' if not value else f'{label} debe tener al menos {minimum} caracteres.'
+        elif len(value) > maximum:
+            errors[field] = f'{label} no puede superar {maximum} caracteres.'
+        values[field] = value
+    if 'correo' not in errors and not EMAIL_PATTERN.match(values['correo']):
+        errors['correo'] = 'Escribe un correo válido, por ejemplo nombre@correo.com.'
+    values['correo'] = values['correo'].lower()
+    return values, errors
+
+@app.post('/api/contact')
+def contact():
+    d = payload()
+    # Honeypot: el campo "sitio_web" está oculto para personas; si llega relleno es un bot.
+    # Se responde como si hubiera funcionado para no darle pistas, pero no se guarda nada.
+    if str(d.get('sitio_web', '')).strip():
+        return jsonify(ok=True, message='Gracias, recibimos tu mensaje.')
+    values, errors = validate_contact(d)
+    if errors:
+        return jsonify(ok=False, message='Revisa los campos marcados.', errors=errors), 400
+    throttle_key = f'contact:{request.remote_addr}'
+    wait = rate_limiter.retry_after(throttle_key, CONTACT_MAX_MESSAGES, CONTACT_WINDOW)
+    if wait:
+        minutes = max(1, round(wait / 60))
+        return jsonify(ok=False, message=f'Enviaste varios mensajes seguidos. Espera {minutes} minuto(s) antes de escribir de nuevo.'), 429
+    with db() as con:
+        con.execute(
+            'INSERT INTO contact_messages(nombre,correo,asunto,mensaje) VALUES(?,?,?,?)',
+            (values['nombre'], values['correo'], values['asunto'], values['mensaje']),
+        )
+    rate_limiter.hit(throttle_key, CONTACT_WINDOW)
+    return jsonify(ok=True, message='Gracias, recibimos tu mensaje. Te responderemos al correo indicado.')
+
+@app.get('/contacto')
+def contact_page(): return send_from_directory(BASE, 'contacto.html')
+
+@app.get('/contact.js')
+def contact_script(): return send_from_directory(BASE, 'contact.js')
+
+@app.get('/contacto.css')
+def contact_styles(): return send_from_directory(BASE, 'contacto.css')
 
 @app.post('/api/logout')
 def logout(): session.clear(); return jsonify(ok=True)
@@ -509,6 +682,9 @@ def profile(): return jsonify(ok=True,user=current_user())
 def ai_config():
     providers=available_providers()
     default_provider=providers[0]['id'] if providers else 'openai'
+    user=current_user()
+    with db() as con:
+        level=ai_level_for(con,user['id_usuario'])
     return jsonify(
         ok=True,
         assistant_name=assistant_name(),
@@ -516,7 +692,29 @@ def ai_config():
         providers=providers,
         default_provider=default_provider,
         model=provider_settings(default_provider)['model'],
+        level=level,
+        levels=list(AI_LEVELS),
+        role=user['rol'],
     )
+
+def ai_level_for(con,user_id):
+    """Nivel musical que la persona eligió para la IA ('intermedio' si no ha elegido)."""
+    row=con.execute('SELECT nivel FROM ai_preferences WHERE id_usuario=?',(user_id,)).fetchone()
+    return row['nivel'] if row and row['nivel'] in AI_LEVELS else 'intermedio'
+
+@app.put('/api/ai/preferences')
+@login_required
+def update_ai_preferences():
+    """Guarda el nivel con el que la IA adapta sus explicaciones a esta persona."""
+    user=current_user(); level=str(payload().get('nivel','')).strip().lower()
+    if level not in AI_LEVELS:
+        return jsonify(ok=False,message=f'Nivel no válido. Elige: {", ".join(AI_LEVELS)}.'),400
+    with db() as con:
+        # UPDATE + INSERT en vez de un upsert: la sintaxis del upsert difiere entre SQLite y MySQL.
+        updated=con.execute('UPDATE ai_preferences SET nivel=? WHERE id_usuario=?',(level,user['id_usuario']))
+        if updated.rowcount==0 and not con.execute('SELECT 1 FROM ai_preferences WHERE id_usuario=?',(user['id_usuario'],)).fetchone():
+            con.execute('INSERT INTO ai_preferences(id_usuario,nivel) VALUES(?,?)',(user['id_usuario'],level))
+    return jsonify(ok=True,level=level)
 
 @app.get('/api/ai/conversations')
 @login_required
@@ -602,11 +800,14 @@ def send_ai_message(conversation_id):
             'SELECT rol,contenido FROM ai_messages WHERE id_conversacion=? ORDER BY id_mensaje DESC LIMIT 20',
             (conversation_id,),
         ).fetchall()
+        level=ai_level_for(con,user['id_usuario'])
     history=[{'role':row['rol'],'content':row['contenido']} for row in reversed(prior)]
     history.append({'role':'user','content':content})
+    # Personalización: la IA recibe el rol, el nombre de pila y el nivel de esta persona.
+    profile={'nombre':user['nombre'],'rol':user['rol'],'nivel':level}
 
     try:
-        answer,provider_used,fallback_notice=generate_reply_with_fallback(history,provider=provider)
+        answer,provider_used,fallback_notice=generate_reply_with_fallback(history,provider=provider,profile=profile)
     except AssistantServiceError as error:
         return jsonify(ok=False,message=str(error)),error.status_code
 
@@ -1237,5 +1438,43 @@ def uploaded(filename):
 @app.get('/api/health')
 def health(): return jsonify(ok=True,app='Lyrics',status='running')
 
+# --- Manejo de errores -------------------------------------------------------
+# Toda ruta /api/ responde JSON {ok:false,message} en español, para que el frontend
+# muestre un mensaje claro en lugar de una página HTML de error.
+HTTP_ERROR_MESSAGES = {
+    400: 'La solicitud no es válida.',
+    404: 'No se encontró lo que buscas.',
+    405: 'Esa acción no está permitida en esta dirección.',
+    413: 'El archivo es demasiado grande (máximo 50 MB).',
+    415: 'El formato de los datos enviados no es compatible.',
+}
+
+@app.errorhandler(HTTPException)
+def handle_http_error(error):
+    if not request.path.startswith('/api/'):
+        return error
+    message = HTTP_ERROR_MESSAGES.get(error.code, error.description or 'No se pudo completar la solicitud.')
+    return jsonify(ok=False, message=message), error.code
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(error):
+    if app.debug:
+        raise error  # en desarrollo se conserva el depurador con el traceback completo
+    log.exception('Error no controlado en %s %s', request.method, request.path)
+    if isinstance(error, (mysql.connector.Error, sqlite3.OperationalError)):
+        message, status = 'No se pudo acceder a la base de datos. Inténtalo de nuevo en unos minutos.', 503
+    else:
+        message, status = 'Ocurrió un error inesperado en el servidor. Inténtalo de nuevo.', 500
+    if request.path.startswith('/api/'):
+        return jsonify(ok=False, message=message), status
+    return message, status
+
 if __name__ == '__main__':
-    app.run(host='127.0.0.1',port=5000,debug=True)
+    # El depurador de Werkzeug permite ejecutar código arbitrario: solo se activa si se pide
+    # explícitamente (LYRICS_DEBUG=1) y nunca junto con LYRICS_ENV=production.
+    debug_mode = os.environ.get('LYRICS_DEBUG', '0') == '1' and not IS_PRODUCTION
+    app.run(
+        host=os.environ.get('LYRICS_HOST', '127.0.0.1'),
+        port=int(os.environ.get('PORT', '5000')),
+        debug=debug_mode,
+    )

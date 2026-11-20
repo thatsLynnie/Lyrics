@@ -22,21 +22,37 @@
       }
     }
 
+    // Estado de carga: se bloquea el botón (evita envíos dobles) y se avisa que algo está pasando.
+    const idleLabel = button.textContent;
     button.disabled = true;
+    button.textContent = mode === 'register' ? 'Creando cuenta…' : 'Entrando…';
     showMessage(message, '');
     try {
-      const response = await fetch(`/api/${mode}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error(data.message || 'No se pudo completar la solicitud.');
+      let response;
+      try {
+        response = await fetch(`/api/${mode}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (networkError) {
+        console.error('Fallo de red en autenticación:', networkError);
+        throw new Error('No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.');
+      }
+      // Un error de proxy o de servidor puede devolver HTML en lugar de JSON.
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        const fallback = response.status >= 500
+          ? 'El servidor tuvo un problema. Inténtalo de nuevo en unos minutos.'
+          : 'No se pudo completar la solicitud.';
+        throw new Error(data.message || fallback);
+      }
       window.location.assign('/dashboard');
     } catch (error) {
-      showMessage(message, error.message || 'No se pudo conectar con el servidor.', true);
+      showMessage(message, error.message, true);
     } finally {
       button.disabled = false;
+      button.textContent = idleLabel;
     }
   }
 
@@ -56,9 +72,14 @@
         link.href = '#logout';
         link.addEventListener('click', async event => {
           event.preventDefault();
-          const response = await fetch('/api/logout', { method: 'POST' });
-          if (!response.ok) throw new Error('No se pudo cerrar la sesión.');
-          window.location.reload();
+          try {
+            const response = await fetch('/api/logout', { method: 'POST' });
+            if (!response.ok) throw new Error(`Error ${response.status}`);
+            window.location.reload();
+          } catch (error) {
+            console.error('No se pudo cerrar la sesión:', error);
+            window.alert('No se pudo cerrar la sesión. Inténtalo de nuevo.');
+          }
         });
       });
     })

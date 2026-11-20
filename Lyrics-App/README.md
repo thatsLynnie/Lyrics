@@ -40,11 +40,40 @@ The **IA Musical** workspace is available to every signed-in role and stores tex
 
 The workspace includes searchable conversation history, copyable formatted answers, keyboard shortcuts, a responsive layout, an optional welcome arpeggio, browser-based speech dictation, and optional spoken answers. Dictation is handled by the browser's speech-recognition service; only the recognized text is sent to the selected provider when the user explicitly submits it. Voice support depends on the browser and its microphone permissions. This first phase supports musical explanations and text drafts of educational and composition ideas. It does not yet accept or analyze score files, perform OMR, validate music automatically, render or play generated notation, or export AI resources. Drafts should be reviewed by the user. The SQLite and MySQL schemas create private conversation storage automatically.
 
+### AI personalization
+
+Each reply is tailored per account. The server builds the system prompt from the signed-in user's **role** (teacher, composer, mixed, administrator), their first name and a **musical level** (beginner, intermediate, advanced) chosen in the *Nivel* selector of the chat header and stored in `ai_preferences`. The suggested prompts also change with the role. The base prompt that states the assistant's limits is always kept. Only the first name, role and level are sent to the provider, never the email or project data. See `build_system_prompt` in `ai_service.py`.
+
+## Contact form
+
+Public page at `/contacto` (`contacto.html`, `contacto.css`, `contact.js`), and a reusable block in `contact-snippet.html` for the landing page: paste the `<section>` before the footer, add `<link rel="stylesheet" href="/contacto.css">` in `<head>` and `<script src="/contact.js"></script>` before `</body>`.
+
+`POST /api/contact` validates every field on the server, saves the message in `contact_messages` and answers with per-field errors (400), a rate-limit message (429, 3 messages per 10 minutes per IP) or success. A hidden honeypot field discards simple bots. Administrators read and manage messages in **Administración → Mensajes de contacto** (change `estado` to `leido` or `respondido`). The page shows a sending state, per-field errors and clear network/server error messages.
+
 ## Database administration
 
 The in-app **Administración** section is shown only to users with the administrator role. It can search and page through records, and create, edit or delete records in the application data tables. User accounts have a separate management view for creating accounts, assigning roles and deleting accounts. Password hashes are never returned or displayed, and roles can only be assigned from the built-in role list. Deleting users or parent records can cascade to related data.
 
 To grant the initial administrator role to an already registered account, stop the app, run `python promote_admin.py` from this folder, and enter that account's email. The script immediately changes the role if the account exists. Start the app again and sign in; the **Administración** section will appear. Only promote an account that belongs to you.
+
+On hosting where you cannot run that script, set `LYRICS_ADMIN_EMAIL` and `LYRICS_ADMIN_PASSWORD` (12+ characters) in the server environment: the account is created on startup only if the email does not exist, and an existing account is never modified.
+
+### Administrator authentication
+
+Every `/api/admin/*` and user-management route is protected server-side by the `administrador` role (hiding the menu item is only cosmetic). Logins are limited to 5 failed attempts per IP and email every 15 minutes, a successful login starts a fresh session, and session cookies are `HttpOnly`, `SameSite=Lax` and `Secure` when `LYRICS_ENV=production`. Run `python app.py` for local development; `LYRICS_DEBUG=1` enables the debugger and is ignored in production. Unexpected API errors return a clear JSON message and are logged on the server without leaking details.
+
+## Deployment (Netlify + Flask backend)
+
+Netlify hosts static files and functions; it cannot run this Flask + MySQL backend. The supported setup is split in two:
+
+1. **Backend**: deploy Flask and MySQL on a service that runs Python (for example Render, Railway or PythonAnywhere), using `gunicorn app:app`. Set `LYRICS_ENV=production`, a fixed `LYRICS_SECRET_KEY`, the MySQL variables, the AI keys, `LYRICS_TRUST_PROXY=1`, `LYRICS_AI_TIMEOUT=20` and optionally `LYRICS_ADMIN_EMAIL`/`LYRICS_ADMIN_PASSWORD`.
+2. **Frontend on Netlify**: connect the repository and set the environment variable `LYRICS_BACKEND_URL` to the backend's HTTPS address. `netlify.toml` runs `scripts/build_netlify.py`, which publishes only the frontend files (plus `Lyrics_F/` when present) to `dist/` and generates `_redirects`, so `/api/*` and `/uploads/*` are proxied to the backend and the browser sees a single origin.
+
+Things to know: Netlify proxied requests time out after 26 seconds ([docs](https://docs.netlify.com/manage/routing/redirects/rewrites-proxies)), hence `LYRICS_AI_TIMEOUT=20`; the first deployment should confirm that the session cookie survives the proxy by logging in on the Netlify domain; large audio uploads go through the same proxy and should be tested.
+
+## Working with OpenCode
+
+`AGENTS.md` describes the project layout, commands and conventions so that OpenCode (or any coding agent) can work on the repository safely.
 
 phpMyAdmin remains available for full database-level maintenance. Select the `lyrics` database in its left navigation to inspect tables and rows. The application database user has access only to `lyrics`; use a MySQL administrator account for creating database users or changing server-level permissions. Back up the database before bulk edits or deletions.
 

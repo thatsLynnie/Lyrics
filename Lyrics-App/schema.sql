@@ -155,3 +155,17 @@ CREATE TABLE IF NOT EXISTS ai_messages (
   id_conversacion INT NOT NULL,
   FOREIGN KEY (id_conversacion) REFERENCES ai_conversations(id_conversacion) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS ai_preferences (
+  id_usuario INT PRIMARY KEY,
+  nivel VARCHAR(20) NOT NULL DEFAULT 'intermedio',
+  FOREIGN KEY (id_usuario) REFERENCES users(id_usuario) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id_mensaje INT AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(120) NOT NULL,
+  correo VARCHAR(255) NOT NULL,
+  asunto VARCHAR(150) NOT NULL,
+  mensaje TEXT NOT NULL,
+  estado VARCHAR(20) NOT NULL DEFAULT 'nuevo',
+  fecha_creacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
