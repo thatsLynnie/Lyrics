@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Alan+Sans:wght@300..900&display=swap" rel="stylesheet">
 <link rel="icon" href="img/Logo2.png" type="image/png">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 <link rel="stylesheet" href="dashboard.css">
 <link rel="stylesheet" href="ai.css">
 <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.3/build/cjs/vexflow.min.js"></script>
@@ -31,42 +32,39 @@
       <button class="nav-item" data-view="admin" id="adminNav" hidden><span>⚙</span>Administración</button>
       <button class="nav-item" data-view="help"><span>?</span>Ayuda</button>
     </nav>
-    <div class="sidebar-user" id="sidebarUser">
-      <div class="avatar" id="sideAvatar">U</div>
-      <div class="side-user-copy"><strong id="sideUserName">Usuario</strong><span id="sideUserRole">Compositor</span><b>Plan Profesional</b></div>
-      <button class="icon-button small" id="logoutBtn" title="Cerrar sesión">↪</button>
-    </div>
   </aside>
 
   <button class="mobile-menu" id="mobileMenu">☰</button>
   <main class="main-area">
     <!-- DASHBOARD -->
-    <section class="screen active" id="screen-dashboard">
-      <header class="page-header">
-        <div><h1>¡Hola, <span id="helloName">María</span>! 👋</h1><p>Continúa creando música increíble.</p></div>
-        <div class="header-actions"><button class="primary" id="newProjectBtn">＋ Nuevo proyecto</button><button class="icon-button" title="Buscar">⌕</button><button class="icon-button" title="Notificaciones">♧</button><button class="icon-button" id="openQuickSettings" title="Ajustes">☷</button></div>
+    <section class="screen active dashboard-screen" id="screen-dashboard">
+      <div class="container-fluid px-0 dashboard-container">
+      <header class="page-header dashboard-header">
+        <div class="dashboard-welcome"><span class="eyebrow">TU ESPACIO CREATIVO</span><h1>¡Hola, <span id="helloName">María</span>! 👋</h1><p>Continúa creando música increíble.</p></div>
+        <div class="header-actions dashboard-actions d-flex align-items-center gap-2"><button class="primary btn btn-primary" id="newProjectBtn">＋ Nuevo proyecto</button><button class="icon-button btn btn-light" title="Buscar">⌕</button><button class="icon-button btn btn-light" title="Notificaciones">♧</button><button class="icon-button btn btn-light" id="openQuickSettings" title="Ajustes">☷</button><div class="dashboard-profile"><div class="avatar" id="sideAvatar">U</div><div class="side-user-copy"><strong id="sideUserName">Usuario</strong><span id="sideUserRole">Compositor</span><b>Plan Profesional</b></div><button class="icon-button small" id="logoutBtn" title="Cerrar sesión" aria-label="Cerrar sesión">↪</button></div></div>
       </header>
       <div class="dashboard-grid">
         <div class="dashboard-main">
           <div class="section-title"><h2>Proyectos recientes</h2><button class="text-button" data-view-target="projects">Ver todos →</button></div>
           <div class="recent-projects" id="recentProjects"></div>
-          <div class="dashboard-lower">
-            <div class="activity-card panel-card"><div class="section-title"><h2>Actividad reciente</h2><button class="text-button">Ver toda la actividad</button></div><div id="activityRecent"></div></div>
-            <div class="usage-card panel-card"><div class="section-title"><h2>Resumen de uso</h2></div><div class="usage-grid" id="usageGrid"></div></div>
+          <div class="dashboard-lower row g-3">
+            <div class="col-12 col-xl-7"><div class="activity-card panel-card h-100"><div class="section-title"><h2>Actividad reciente</h2><button class="text-button">Ver toda la actividad</button></div><div id="activityRecent"></div></div></div>
+            <div class="col-12 col-xl-5"><div class="usage-card panel-card h-100"><div class="section-title"><h2>Resumen de uso</h2></div><div class="usage-grid" id="usageGrid"></div></div></div>
           </div>
         </div>
+      </div>
       </div>
     </section>
 
     <!-- PROJECTS -->
-    <section class="screen" id="screen-projects">
-      <header class="page-header compact"><div><span class="eyebrow">ORGANIZACIÓN</span><h1>Mis Proyectos</h1><p>Crea, organiza y comparte tus procesos musicales.</p></div><button class="primary" id="projectsNewBtn">＋ Nuevo proyecto</button></header>
-      <div class="toolbar-row"><div class="search-box">⌕<input id="projectSearch" placeholder="Buscar proyectos..."></div><select id="projectStatusFilter"><option value="all">Todos los estados</option><option value="activo">Activos</option><option value="archivado">Archivados</option></select></div>
-      <div class="project-grid-large" id="projectGrid"></div>
+    <section class="screen module-screen" id="screen-projects">
+      <header class="page-header compact module-page-header"><div><span class="eyebrow">ORGANIZACIÓN</span><h1>Mis Proyectos</h1><p>Crea, organiza y comparte tus procesos musicales.</p></div><button class="primary btn btn-primary" id="projectsNewBtn">＋ Nuevo proyecto</button></header>
+      <div class="toolbar-row"><div class="search-box">⌕<input class="form-control" id="projectSearch" placeholder="Buscar proyectos..."></div><select class="form-select" id="projectStatusFilter"><option value="all">Todos los estados</option><option value="activo">Activos</option><option value="archivado">Archivados</option></select></div>
+      <div class="project-grid-large row g-3" id="projectGrid"></div>
     </section>
 
     <!-- EDITOR -->
-    <section class="screen editor-screen" id="screen-editor">
+    <section class="screen editor-screen module-screen" id="screen-editor">
       <div class="editor-shell">
         <header class="editor-header">
           <button class="editor-brand" data-view-target="dashboard"><span class="editor-clef">𝄞</span><span><b>LYRICS</b><small>CREA · ORGANIZA · ANALIZA · EXPRESA</small></span></button>
@@ -107,31 +105,31 @@
     </section>
 
     <!-- RECORDING -->
-    <section class="screen" id="screen-recording">
-      <header class="page-header compact"><div><span class="eyebrow">AUDIO</span><h1>Sistema de Grabación</h1><p>Graba, escucha y detecta notas desde tu micrófono.</p></div><button class="ghost" id="recordSettingsBtn">⚙ Ajustes</button></header>
-      <div class="record-layout"><div class="record-card panel-card"><div class="form-row"><label>Proyecto<select id="recordProject"></select></label><label>Composición<select id="recordComposition"></select></label></div><div class="big-record"><span id="recordTimer">00:00</span><small id="recordState">LISTO PARA GRABAR</small></div><div class="level-meter"><div id="recordLevel"></div></div><div class="record-buttons"><button class="record-main" id="recordBtn" aria-label="Iniciar grabación">●</button><button class="stop-main" id="stopRecordBtn" aria-label="Detener grabación">■</button><button class="ghost" id="playRecordedBtn">▶ Reproducir</button><button class="ghost" id="downloadRecordedBtn">⇩ Descargar</button></div><audio id="recordAudio" controls hidden></audio><p class="helper" id="recordMessage">Selecciona una composición y pulsa el botón rojo para comenzar.</p><div id="recordingList" class="compact-list" aria-live="polite"></div></div><div class="detector-card panel-card"><span class="eyebrow">DETECCIÓN DE NOTAS</span><div class="detected-big" id="detectedNote">—</div><div class="detector-values"><div><span>Frecuencia</span><b id="frequency">—</b></div><div><span>Nota</span><b id="noteLabel">—</b></div><div><span>Confianza</span><b id="noteConfidence">—</b></div></div><button class="primary" id="saveDetectedBtn">＋ Añadir nota a partitura</button></div></div>
+    <section class="screen module-screen" id="screen-recording">
+      <header class="page-header compact module-page-header"><div><span class="eyebrow">AUDIO</span><h1>Sistema de Grabación</h1><p>Graba, escucha y detecta notas desde tu micrófono.</p></div><button class="ghost btn btn-outline-secondary" id="recordSettingsBtn">⚙ Ajustes</button></header>
+      <div class="record-layout row g-3"><div class="col-12 col-lg-7"><div class="record-card panel-card h-100"><div class="form-row"><label>Proyecto<select class="form-select" id="recordProject"></select></label><label>Composición<select class="form-select" id="recordComposition"></select></label></div><div class="big-record"><span id="recordTimer">00:00</span><small id="recordState">LISTO PARA GRABAR</small></div><div class="level-meter"><div id="recordLevel"></div></div><div class="record-buttons"><button class="record-main btn btn-danger rounded-circle" id="recordBtn" aria-label="Iniciar grabación">●</button><button class="stop-main btn btn-secondary rounded-circle" id="stopRecordBtn" aria-label="Detener grabación">■</button><button class="ghost btn btn-outline-secondary" id="playRecordedBtn">▶ Reproducir</button><button class="ghost btn btn-outline-secondary" id="downloadRecordedBtn">⇩ Descargar</button></div><audio id="recordAudio" controls hidden></audio><p class="helper" id="recordMessage">Selecciona una composición y pulsa el botón rojo para comenzar.</p><div id="recordingList" class="compact-list" aria-live="polite"></div></div></div><div class="col-12 col-lg-5"><div class="detector-card panel-card h-100"><span class="eyebrow">DETECCIÓN DE NOTAS</span><div class="detected-big" id="detectedNote">—</div><div class="detector-values"><div><span>Frecuencia</span><b id="frequency">—</b></div><div><span>Nota</span><b id="noteLabel">—</b></div><div><span>Confianza</span><b id="noteConfidence">—</b></div></div><button class="primary btn btn-primary" id="saveDetectedBtn">＋ Añadir nota a partitura</button></div></div></div>
       <section class="record-score-card panel-card" aria-labelledby="recordScoreTitle"><div class="section-title"><div><span class="eyebrow">VEXFLOW</span><h2 id="recordScoreTitle">Partitura de la composición</h2><p>Haz clic en el pentagrama o enfócalo y pulsa Enter para añadir una nota; las notas detectadas también se guardan aquí.</p></div><button class="ghost" id="openScoreEditor" data-view-target="editor">Abrir editor →</button></div><div class="record-score-scroll"><div id="recordingScoreCanvas" role="application" aria-label="Partitura interactiva" tabindex="0"></div></div></section>
     </section>
 
     <!-- EDUCATION -->
-    <section class="screen" id="screen-education">
-      <header class="page-header compact"><div><span class="eyebrow">APRENDIZAJE</span><h1>Módulo Educativo</h1><p>Aprende teoría, lectura y composición musical.</p></div></header>
-      <div class="lesson-grid"><button class="lesson-card"><span>♬</span><b>Teoría Musical</b><small>12 lecciones</small></button><button class="lesson-card"><span>♫</span><b>Lectura Rítmica</b><small>8 lecciones</small></button><button class="lesson-card"><span>⌁</span><b>Armonía</b><small>10 lecciones</small></button><button class="lesson-card"><span>✎</span><b>Composición</b><small>7 lecciones</small></button></div>
-      <div class="education-panels"><div class="panel-card progress-card"><div class="section-title"><div><h2>Tu progreso</h2><p>Nivel 7 · Intermedio</p></div><b>750 / 1200 XP</b></div><div class="progress-bar"><span style="width:62%"></span></div><div class="progress-caption"><span>62%</span></div><div class="lesson-feature"><div><span class="lesson-icon">♧</span><div><b>Lección sugerida</b><h3>Intervalos Musicales</h3><p>Aprende a identificar y usar intervalos en tus composiciones.</p><button class="primary">Continuar lección</button></div></div><div class="mini-score" id="miniScore"></div></div></div><div class="panel-card teacher-card"><span class="eyebrow">DOCENTE</span><h2>Actividades y evaluaciones</h2><form id="activityForm"><input id="activityName" placeholder="Nombre de la actividad" required><textarea id="activityDesc" placeholder="Descripción"></textarea><select id="activityProject"><option value="">Sin proyecto</option></select><button class="primary">Crear actividad</button></form><div id="activityList" class="compact-list"></div></div></div>
+    <section class="screen module-screen" id="screen-education">
+      <header class="page-header compact module-page-header"><div><span class="eyebrow">APRENDIZAJE</span><h1>Módulo Educativo</h1><p>Aprende teoría, lectura y composición musical.</p></div></header>
+      <div class="lesson-grid row g-3"><button class="lesson-card btn btn-light col-6 col-md-3"><span>♬</span><b>Teoría Musical</b><small>12 lecciones</small></button><button class="lesson-card btn btn-light col-6 col-md-3"><span>♫</span><b>Lectura Rítmica</b><small>8 lecciones</small></button><button class="lesson-card btn btn-light col-6 col-md-3"><span>⌁</span><b>Armonía</b><small>10 lecciones</small></button><button class="lesson-card btn btn-light col-6 col-md-3"><span>✎</span><b>Composición</b><small>7 lecciones</small></button></div>
+      <div class="education-panels row g-3"><div class="col-12 col-xl-7"><div class="panel-card progress-card h-100"><div class="section-title"><div><h2>Tu progreso</h2><p>Nivel 7 · Intermedio</p></div><b>750 / 1200 XP</b></div><div class="progress-bar"><span style="width:62%"></span></div><div class="progress-caption"><span>62%</span></div><div class="lesson-feature"><div><span class="lesson-icon">♧</span><div><b>Lección sugerida</b><h3>Intervalos Musicales</h3><p>Aprende a identificar y usar intervalos en tus composiciones.</p><button class="primary btn btn-primary">Continuar lección</button></div></div><div class="mini-score" id="miniScore"></div></div></div></div><div class="col-12 col-xl-5"><div class="panel-card teacher-card h-100"><span class="eyebrow">DOCENTE</span><h2>Actividades y evaluaciones</h2><form id="activityForm"><input class="form-control" id="activityName" placeholder="Nombre de la actividad" required><textarea class="form-control" id="activityDesc" placeholder="Descripción"></textarea><select class="form-select" id="activityProject"><option value="">Sin proyecto</option></select><button class="primary btn btn-primary">Crear actividad</button></form><div id="activityList" class="compact-list"></div></div></div></div>
     </section>
 
     <!-- MUSICAL ASSISTANT -->
-    <section class="screen ai-screen" id="screen-ai">
+    <section class="screen ai-screen module-screen" id="screen-ai">
       <header class="page-header compact">
         <div><span class="eyebrow">ASISTENTE MUSICAL</span><h1 id="aiPageTitle">IA Musical</h1><p>Ideas, explicaciones y borradores para tu proceso creativo y de aprendizaje.</p></div>
       </header>
       <div class="ai-layout">
-        <aside class="ai-history panel-card" aria-label="Conversaciones">
-          <div class="ai-history-heading"><strong>Conversaciones</strong><button class="primary" id="aiNewConversation" type="button">＋ Nueva</button></div>
+        <aside class="ai-history panel-card card" aria-label="Conversaciones">
+          <div class="ai-history-heading"><strong>Conversaciones</strong><button class="primary btn btn-primary" id="aiNewConversation" type="button">＋ Nueva</button></div>
           <label class="ai-history-search"><span aria-hidden="true">⌕</span><input id="aiConversationSearch" type="search" placeholder="Buscar conversación" aria-label="Buscar conversación"></label>
           <div class="ai-conversation-list" id="aiConversationList"></div>
         </aside>
-        <section class="ai-chat panel-card" aria-label="Chat con el asistente">
+        <section class="ai-chat panel-card card" aria-label="Chat con el asistente">
           <header class="ai-chat-header">
             <div class="ai-brand"><span class="ai-brand-mark" aria-hidden="true">𝄞</span><strong>LYRICS</strong><span class="ai-brand-divider"></span><span class="ai-brand-title" id="aiAssistantName">Asistente musical</span></div>
             <div class="ai-chat-actions">
@@ -196,35 +194,35 @@
     </section>
 
     <!-- LIBRARY -->
-    <section class="screen" id="screen-library">
-      <header class="page-header compact"><div><span class="eyebrow">BIBLIOTECA</span><h1>Biblioteca de Partituras</h1><p>Explora, organiza y usa partituras para inspirarte.</p></div></header>
-      <div class="library-toolbar"><div class="search-box">⌕<input id="librarySearch" placeholder="Buscar partituras..."></div><div class="filter-pills"><button class="active" data-library-filter="all">Todas</button><button data-library-filter="mine">Mis partituras</button><button data-library-filter="favorites">Favoritas</button><select id="libraryInstrument"><option value="">Instrumento</option><option>Piano</option><option>Guitarra</option><option>Batería</option><option>Bajo</option><option>Violín</option><option>Flauta</option><option>Saxo</option><option>Trompeta</option><option>Cello</option><option>Clarinete</option></select><select id="libraryDifficulty"><option value="">Dificultad</option><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select><select id="libraryGenre"><option value="">Género</option><option>Clásica</option><option>Moderna</option></select></div></div>
-      <div class="library-cards" id="libraryCards"></div>
+    <section class="screen module-screen" id="screen-library">
+      <header class="page-header compact module-page-header"><div><span class="eyebrow">BIBLIOTECA</span><h1>Biblioteca de Partituras</h1><p>Explora, organiza y usa partituras para inspirarte.</p></div></header>
+      <div class="library-toolbar"><div class="search-box">⌕<input class="form-control" id="librarySearch" placeholder="Buscar partituras..."></div><div class="filter-pills"><button class="active btn btn-outline-secondary" data-library-filter="all">Todas</button><button class="btn btn-outline-secondary" data-library-filter="mine">Mis partituras</button><button class="btn btn-outline-secondary" data-library-filter="favorites">Favoritas</button><select class="form-select" id="libraryInstrument"><option value="">Instrumento</option><option>Piano</option><option>Guitarra</option><option>Batería</option><option>Bajo</option><option>Violín</option><option>Flauta</option><option>Saxo</option><option>Trompeta</option><option>Cello</option><option>Clarinete</option></select><select class="form-select" id="libraryDifficulty"><option value="">Dificultad</option><option>Fácil</option><option>Intermedia</option><option>Avanzada</option></select><select class="form-select" id="libraryGenre"><option value="">Género</option><option>Clásica</option><option>Moderna</option></select></div></div>
+      <div class="library-cards row g-3" id="libraryCards"></div>
     </section>
 
     <!-- PROFILE -->
-    <section class="screen" id="screen-profile">
-      <header class="page-header compact"><div><span class="eyebrow">CUENTA</span><h1>Perfil de Usuario</h1><p>Gestiona tu información y preferencias.</p></div></header>
-      <div class="profile-layout"><aside class="profile-menu"><button class="active">♙ Información personal</button><button>⚙ Preferencias</button><button>▣ Suscripción</button><button>♧ Seguridad</button><button>♢ Notificaciones</button><button>▦ Dispositivos</button></aside><div class="profile-card panel-card"><div class="profile-head"><div class="avatar large" id="profileAvatar">U</div><div><h2 id="profileDisplayName">Usuario</h2><span id="profileDisplayRole">Compositora</span><b>Plan Profesional</b></div></div><form id="profileForm"><div class="form-section-title">Información personal</div><label>Nombre de usuario<input id="profileName" required></label><label>Correo electrónico<input id="profileEmail" disabled></label><label>Biografía<textarea id="profileBio"></textarea></label><label>País<select id="profileCountry"><option value="">Selecciona un país</option><option>Colombia</option><option>México</option><option>España</option><option>Argentina</option><option>Chile</option></select></label><div class="profile-actions"><button type="button" class="ghost" id="cancelProfileBtn">Cancelar</button><button class="primary">Guardar cambios</button></div></form></div></div>
+    <section class="screen module-screen" id="screen-profile">
+      <header class="page-header compact module-page-header"><div><span class="eyebrow">CUENTA</span><h1>Perfil de Usuario</h1><p>Gestiona tu información y preferencias.</p></div></header>
+      <div class="profile-layout row g-3"><aside class="profile-menu col-12 col-lg-3"><button class="active">♙ Información personal</button><button>⚙ Preferencias</button><button>▣ Suscripción</button><button>♧ Seguridad</button><button>♢ Notificaciones</button><button>▦ Dispositivos</button></aside><div class="profile-card panel-card col-12 col-lg-9"><div class="profile-head"><div class="avatar large" id="profileAvatar">U</div><div><h2 id="profileDisplayName">Usuario</h2><span id="profileDisplayRole">Compositora</span><b>Plan Profesional</b></div></div><form id="profileForm"><div class="form-section-title">Información personal</div><label>Nombre de usuario<input class="form-control" id="profileName" required></label><label>Correo electrónico<input class="form-control" id="profileEmail" disabled></label><label>Biografía<textarea class="form-control" id="profileBio"></textarea></label><label>País<select class="form-select" id="profileCountry"><option value="">Selecciona un país</option><option>Colombia</option><option>México</option><option>España</option><option>Argentina</option><option>Chile</option></select></label><div class="profile-actions"><button type="button" class="ghost btn btn-outline-secondary" id="cancelProfileBtn">Cancelar</button><button class="primary btn btn-primary">Guardar cambios</button></div></form></div></div>
     </section>
 
     <!-- ADMINISTRATION -->
-    <section class="screen" id="screen-admin">
-      <header class="page-header compact"><div><span class="eyebrow">ADMINISTRACIÓN</span><h1>Datos de Lyrics</h1><p>Consulta y administra registros de la base de datos. Los cambios pueden afectar a otros usuarios.</p></div></header>
-      <div class="panel-card admin-panel">
+    <section class="screen module-screen" id="screen-admin">
+      <header class="page-header compact module-page-header"><div><span class="eyebrow">ADMINISTRACIÓN</span><h1>Datos de Lyrics</h1><p>Consulta y administra registros de la base de datos. Los cambios pueden afectar a otros usuarios.</p></div></header>
+      <div class="panel-card card shadow-sm admin-panel">
         <div class="toolbar-row admin-toolbar">
-          <label for="adminTableSelect">Tabla<select id="adminTableSelect"></select></label>
-          <label for="adminSearch">Buscar<input id="adminSearch" type="search" maxlength="100" placeholder="Filtrar registros"></label>
-          <div class="admin-toolbar-actions"><button class="ghost" id="adminReloadBtn" type="button">Actualizar</button><button class="primary" id="adminCreateBtn" type="button">＋ Nuevo registro</button></div>
+          <label for="adminTableSelect">Tabla<select class="form-select" id="adminTableSelect"></select></label>
+          <label for="adminSearch">Buscar<input class="form-control" id="adminSearch" type="search" maxlength="100" placeholder="Filtrar registros"></label>
+          <div class="admin-toolbar-actions"><button class="ghost btn btn-outline-secondary" id="adminReloadBtn" type="button">Actualizar</button><button class="primary btn btn-primary" id="adminCreateBtn" type="button">＋ Nuevo registro</button></div>
         </div>
         <p class="admin-status" id="adminStatus" aria-live="polite"></p>
-        <div class="admin-table-scroll"><table class="admin-table"><thead id="adminTableHead"></thead><tbody id="adminTableBody"></tbody></table></div>
-        <div class="admin-pagination"><span id="adminRowCount"></span><button class="ghost" id="adminMoreBtn" type="button" hidden>Ver más</button></div>
+        <div class="admin-table-scroll"><table class="admin-table table table-hover align-middle"><thead id="adminTableHead"></thead><tbody id="adminTableBody"></tbody></table></div>
+        <div class="admin-pagination"><span id="adminRowCount"></span><button class="ghost btn btn-outline-secondary" id="adminMoreBtn" type="button" hidden>Ver más</button></div>
       </div>
     </section>
 
     <!-- HELP -->
-    <section class="screen" id="screen-help"><header class="page-header compact"><div><span class="eyebrow">SOPORTE</span><h1>Ayuda</h1><p>Encuentra respuestas rápidas sobre Lyrics.</p></div></header><div class="faq-grid"><div class="panel-card"><h3>¿Cómo creo un proyecto?</h3><p>Pulsa “Nuevo proyecto”, asigna un nombre y una descripción. Desde allí puedes añadir composiciones, recursos y grabaciones.</p></div><div class="panel-card"><h3>¿Cómo guardo una partitura?</h3><p>Abre el Editor de Partituras, selecciona una composición, añade notas y pulsa Guardar.</p></div><div class="panel-card"><h3>¿Cómo grabo?</h3><p>En Grabación, permite el acceso al micrófono, selecciona la composición y usa el botón rojo.</p></div><div class="panel-card"><h3>¿Puedo exportar?</h3><p>Desde el editor puedes exportar los datos del proyecto y la partitura en formatos compatibles con Lyrics.</p></div></div></section>
+    <section class="screen module-screen" id="screen-help"><header class="page-header compact module-page-header"><div><span class="eyebrow">SOPORTE</span><h1>Ayuda</h1><p>Encuentra respuestas rápidas sobre Lyrics.</p></div></header><div class="faq-grid row g-3"><div class="col-12 col-lg-6"><div class="panel-card"><h3>¿Cómo creo un proyecto?</h3><p>Pulsa “Nuevo proyecto”, asigna un nombre y una descripción. Desde allí puedes añadir composiciones, recursos y grabaciones.</p></div></div><div class="col-12 col-lg-6"><div class="panel-card"><h3>¿Cómo guardo una partitura?</h3><p>Abre el Editor de Partituras, selecciona una composición, añade notas y pulsa Guardar.</p></div></div><div class="col-12 col-lg-6"><div class="panel-card"><h3>¿Cómo grabo?</h3><p>En Grabación, permite el acceso al micrófono, selecciona la composición y usa el botón rojo.</p></div></div><div class="col-12 col-lg-6"><div class="panel-card"><h3>¿Puedo exportar?</h3><p>Desde el editor puedes exportar los datos del proyecto y la partitura en formatos compatibles con Lyrics.</p></div></div></div></section>
   </main>
 </div>
 

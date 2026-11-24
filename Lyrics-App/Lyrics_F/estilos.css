@@ -1957,3 +1957,257 @@ img {
     }
 
 }
+
+/* Animaciones y acabados de la página principal */
+.mi-navbar {
+    background-color: rgba(131, 42, 65, .96) !important;
+    backdrop-filter: blur(14px);
+    transition: box-shadow .25s ease, background-color .25s ease;
+}
+
+.navbar-brand-img {
+    transition: transform .3s ease, filter .3s ease;
+}
+
+.navbar-brand:hover .navbar-brand-img {
+    transform: scale(1.04);
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, .18));
+}
+
+.logo-background::before {
+    position: absolute;
+    z-index: 2;
+    inset: 12% 18%;
+    border: 1px solid rgba(255, 255, 255, .28);
+    border-radius: 50%;
+    content: "";
+    pointer-events: none;
+    animation: landing-orbit 18s linear infinite;
+}
+
+.musica-fondo {
+    animation: landing-background-drift 24s ease-in-out infinite alternate;
+}
+
+.carousel-logo .carousel-item img {
+    animation: landing-image-drift 8s ease-in-out infinite alternate;
+}
+
+.logo-background .logom {
+    filter: drop-shadow(0 15px 26px rgba(57, 14, 30, .24));
+    animation: landing-logo-float 5s ease-in-out infinite;
+}
+
+.hero .hero-text > * {
+    animation: landing-rise .65s both;
+}
+
+.hero .hero-text > :nth-child(2) {
+    animation-delay: .08s;
+}
+
+.hero .hero-text > :nth-child(3) {
+    animation-delay: .16s;
+}
+
+.hero .hero-text > :nth-child(4) {
+    animation-delay: .23s;
+}
+
+.hero .hero-text > :nth-child(5) {
+    animation-delay: .3s;
+}
+
+.hero .carrusel-centrado {
+    animation: landing-image-enter .8s .12s both;
+}
+
+.main-button,
+.secondary-button {
+    box-shadow: 0 7px 18px rgba(85, 25, 45, .12);
+    transition: transform .24s ease, box-shadow .24s ease, background-color .24s ease, color .24s ease;
+}
+
+.main-button:hover,
+.secondary-button:hover {
+    box-shadow: 0 13px 26px rgba(85, 25, 45, .2);
+}
+
+.section-heading .section-label {
+    animation: landing-label-in .6s both;
+}
+
+.section-heading h2 {
+    text-wrap: balance;
+}
+
+.feature-card,
+.function-card,
+.user-card,
+.workflow-item {
+    border: 1px solid rgba(131, 42, 65, .08);
+    transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+}
+
+.feature-card:hover,
+.function-card:hover,
+.user-card:hover,
+.workflow-item:hover {
+    border-color: rgba(131, 42, 65, .24);
+    box-shadow: 0 18px 42px rgba(74, 24, 42, .17);
+}
+
+.feature-image img,
+.function-image img,
+.module-image img {
+    transition: transform .55s cubic-bezier(.2, .7, .2, 1), filter .4s ease;
+}
+
+.feature-card:hover .feature-image img,
+.function-card:hover .function-image img,
+.module-row:hover .module-image img {
+    transform: scale(1.045);
+    filter: saturate(1.08);
+}
+
+.feature-number,
+.module-number {
+    display: inline-block;
+    transition: transform .25s ease, letter-spacing .25s ease;
+}
+
+.feature-card:hover .feature-number,
+.module-row:hover .module-number {
+    transform: translateX(4px);
+    letter-spacing: 3px;
+}
+
+.module-row {
+    transition: border-color .3s ease;
+}
+
+.module-row:hover {
+    border-color: rgba(254, 252, 239, .34);
+}
+
+.workflow-item {
+    transition-delay: 0s;
+}
+
+.workflow-item:hover {
+    transform: translateY(-6px);
+}
+
+.cta-box {
+    animation: landing-rise .8s both;
+}
+
+footer a {
+    transition: color .2s ease, transform .2s ease;
+}
+
+footer a:hover {
+    display: inline-block;
+    transform: translateX(3px);
+}
+
+.mi-navbar :focus-visible,
+.hero :focus-visible,
+main a:focus-visible,
+footer a:focus-visible {
+    outline: 3px solid rgba(131, 42, 65, .38);
+    outline-offset: 4px;
+}
+
+@keyframes landing-rise {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes landing-image-enter {
+    from {
+        opacity: 0;
+        transform: translateY(18px) scale(.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes landing-label-in {
+    from {
+        opacity: 0;
+        letter-spacing: 8px;
+    }
+
+    to {
+        opacity: 1;
+        letter-spacing: 3px;
+    }
+}
+
+@keyframes landing-logo-float {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+@keyframes landing-background-drift {
+    from {
+        transform: scale(1);
+    }
+
+    to {
+        transform: scale(1.06);
+    }
+}
+
+@keyframes landing-image-drift {
+    from {
+        transform: scale(1.08);
+    }
+
+    to {
+        transform: scale(1.14);
+    }
+}
+
+@keyframes landing-orbit {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: .01ms !important;
+    }
+}
+
+html,
+body {
+    overflow-x: clip;
+}
