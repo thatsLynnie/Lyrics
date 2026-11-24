@@ -163,16 +163,22 @@ function measurePaddingTickables(VF,measure){const capacity=state.meter.numerato
 function alignNotesToMeasureTime(noteObjects,measure,stave){const capacity=state.meter.numerator*4/state.meter.denominator,noteAreaWidth=stave.getNoteEndX()-stave.getNoteStartX(),rightPadding=Math.max(12,...noteObjects.map(note=>note.getWidth()/2+2)),timedWidth=Math.max(0,noteAreaWidth-rightPadding);let elapsed=0;measure.indices.forEach((index,localIndex)=>{noteObjects[localIndex].getTickContext().setX(elapsed/capacity*timedWidth);elapsed+=noteBeats(state.notes[index])})}
 function emphasizeMeasureBarline(svg){const barlines=svg?.querySelectorAll('.vf-stavebarline'),barline=barlines?.[barlines.length-1],rect=barline?.querySelector('rect');if(rect){rect.setAttribute('fill','#241b1e');rect.setAttribute('width','1.5')}}
 function automaticBeamGroups(measure,excludedIndices=new Set()){
-	const{numerator,denominator}=state.meter,allEighths=denominator===4&&measure.indices.every(index=>state.notes[index].duration==='8'),groupLength=allEighths?numerator:denominator===8?(numerator>=6&&numerator%3===0?1.5:numerator===4?1:.5):4/denominator,groups=[];
+	const{numerator,denominator}=state.meter,groupLength=denominator===8?(numerator>=6&&numerator%3===0?1.5:numerator===4?1:.5):4/denominator,groups=[];
 	let group=[],activeGroup=-1,position=0;
 	const flush=()=>{if(group.length>1)groups.push(group);group=[];activeGroup=-1};
-	measure.indices.forEach(index=>{
-		const note=state.notes[index],duration=noteBeats(note),groupIndex=Math.floor((position+1e-8)/groupLength),groupEnd=(groupIndex+1)*groupLength,fitsGroup=position+duration<=groupEnd+1e-8;
+	for(let offset=0;offset<measure.indices.length;offset++){
+		const index=measure.indices[offset],note=state.notes[index],plainEighth=denominator===4&&note.duration==='8'&&!note.dotted&&!note.tuplet?.complete&&!note.rest;
+		if(plainEighth&&!excludedIndices.has(index)){
+			let runEnd=offset+1;
+			while(runEnd<measure.indices.length){const nextIndex=measure.indices[runEnd],next=state.notes[nextIndex];if(excludedIndices.has(nextIndex)||next.rest||next.duration!=='8'||next.dotted||next.tuplet?.complete)break;runEnd++}
+			if(runEnd-offset>1){flush();groups.push(measure.indices.slice(offset,runEnd));for(let i=offset;i<runEnd;i++)position+=noteBeats(state.notes[measure.indices[i]]);offset=runEnd-1;continue}
+		}
+		const duration=noteBeats(note),groupIndex=Math.floor((position+1e-8)/groupLength),groupEnd=(groupIndex+1)*groupLength,fitsGroup=position+duration<=groupEnd+1e-8;
 		if(group.length&&groupIndex!==activeGroup)flush();
 		if(excludedIndices.has(index)||note.rest||!['8','16'].includes(note.duration)||!fitsGroup)flush();
 		else{if(!group.length)activeGroup=groupIndex;group.push(index)}
 		position+=duration;
-	});
+	}
 	flush();
 	return groups;
 }
@@ -359,6 +365,16 @@ $$('[data-close-modal]').forEach(b=>b.onclick=()=>{const modal=b.closest('.modal
 function midiForNote(note){const letter=note.name?.[0]||'C',base=naturalPitchClasses[letter]??0,explicit=note.accidental??note.name?.match(/[#b]$/)?.[0],alteration=explicit==='#'?1:explicit==='b'?-1:explicit==='n'?0:signatureAccidentals()[letter]==='#'?1:signatureAccidentals()[letter]==='b'?-1:0;return((Number(note.octave)||4)+1)*12+base+alteration}
 function stopPlayback(){state.playing=false;clearTimeout(state.playbackTimer);if(state.audioContext){state.audioContext.close();state.audioContext=null}$('#playBtn').textContent='▶';$('#playBtn').classList.remove('is-playing')}
 function hairpinGain(index){let level=1;state.hairpins.forEach(({start,end,type})=>{if(index<start||index>end||end<=start)return;const progress=(index-start)/(end-start);level*=type==='crescendo'?.35+.65*progress:1-.65*progress});return level}
+function playPianoNote(note,duration,index){
+	const audio=state.audioContext,now=audio.currentTime,frequency=440*Math.pow(2,(midiForNote(note)-69)/12),dynamics={pp:.32,p:.42,mp:.52,mf:.62,f:.74,ff:.84},velocity=Math.min(.95,(dynamics[note.dynamic]||.58)*(note.accent?1.15:1)*hairpinGain(index)),partials=[[1,.62,1.8],[2,.24,.9],[3,.1,.52],[4,.055,.34],[5,.025,.22],[6,.012,.16]],releaseAt=Math.max(now+.012,now+duration-.03);
+	partials.forEach(([harmonic,level,decay])=>{
+		const oscillator=audio.createOscillator(),envelope=audio.createGain(),partialFrequency=frequency*harmonic*(1+.000015*harmonic*harmonic),peak=Math.max(.0001,velocity*level);
+		if(partialFrequency>=audio.sampleRate/2)return;
+		oscillator.type='sine';oscillator.frequency.setValueAtTime(partialFrequency,now);
+		envelope.gain.setValueAtTime(.0001,now);envelope.gain.exponentialRampToValueAtTime(peak,now+.006);envelope.gain.setTargetAtTime(peak*.12,now+.006,decay);envelope.gain.setTargetAtTime(.0001,releaseAt,.012);
+		oscillator.connect(envelope);envelope.connect(audio.destination);oscillator.start(now);oscillator.stop(now+duration+.05);
+	});
+}
 function schedulePlayback(){
 	if(!state.playing)return;
 	if(state.playbackIndex>=state.notes.length){stopPlayback();state.editorSeconds=0;$('#editorClock').textContent=`00:00 / ${formatTime(state.notes.reduce((sum,n)=>sum+noteBeats(n),0)*60/Number($('#tempoValue').textContent))}`;return}
@@ -366,7 +382,7 @@ function schedulePlayback(){
 	while(end<state.notes.length-1&&state.ties.some(pair=>pair[0]===end&&pair[1]===end+1)&&!state.notes[end+1].rest&&midiForNote(state.notes[end])===midiForNote(state.notes[end+1]))end++;
 	const duration=state.notes.slice(start,end+1).reduce((sum,item)=>sum+noteBeats(item),0)*beatSeconds;
 	$('#editorClock').textContent=`${formatTime(state.editorSeconds)} / ${formatTime(state.notes.reduce((sum,n)=>sum+noteBeats(n),0)*beatSeconds)}`;
-	if(!note.rest){const oscillator=state.audioContext.createOscillator(),gain=state.audioContext.createGain();oscillator.type='sine';oscillator.frequency.value=440*Math.pow(2,(midiForNote(note)-69)/12);gain.gain.setValueAtTime(0,state.audioContext.currentTime);gain.gain.linearRampToValueAtTime(.62*hairpinGain(start),state.audioContext.currentTime+.015);gain.gain.setTargetAtTime(.001,state.audioContext.currentTime+Math.max(.03,duration*.82),.03);oscillator.connect(gain);gain.connect(state.audioContext.destination);oscillator.start();oscillator.stop(state.audioContext.currentTime+duration)}
+	if(!note.rest)playPianoNote(note,duration,start);
 	if(state.metronome){const tick=state.audioContext.createOscillator(),gain=state.audioContext.createGain();tick.frequency.value=1200;gain.gain.value=.08;tick.connect(gain);gain.connect(state.audioContext.destination);tick.start();tick.stop(state.audioContext.currentTime+.035)}
 	state.editorSeconds+=duration;state.playbackIndex=end+1;state.playbackTimer=setTimeout(schedulePlayback,duration*1000)
 }
